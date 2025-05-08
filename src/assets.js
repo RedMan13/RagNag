@@ -1,7 +1,7 @@
 const path = require('node:path');
 const { constants, ...fs } = require('node:fs/promises');
 const Image = require('image-raub');
-const { registerFont } = require('canvas');
+const { registerFont, loadImage, createCanvas } = require('canvas');
 /**
  * @typedef {{
  *   create(path: string): Promise<unknown>;
@@ -26,6 +26,22 @@ const loaders = [
             instance.data.data = new Uint8Array(4);
         },
         types: ['png']
+    },
+    {
+        async create(path) {
+            const img = await loadImage(path);
+            const can = createCanvas(img.width,img.height);
+            const ctx = can.getContext('2d');
+            ctx.drawImage(img, 0,0);
+            const data = ctx.getImageData(0,0, can.width,can.height);
+            return Image.fromPixels(data.width, data.height, 32, Buffer.from(data.data));
+        },
+        /** @param {Image} instance */
+        destroy(instance) {
+            // @ts-ignore javascript wont actually stop us here, so do it anyways.
+            instance.data.data = new Uint8Array(4);
+        },
+        types: ['svg']
     },
     {
         create(path) { return fs.readFile(path, 'utf8'); },

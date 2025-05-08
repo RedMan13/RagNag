@@ -4,6 +4,7 @@ const { createCanvas } = require('canvas');
 const WebGLRenderer = require('./renderer/src/index.js');
 const path = require('node:path');
 const { hsvToRgb } = require('./renderer/src/util/color-conversions.js');
+const Point = require('./point.js');
 const fs = require('fs');
 
 // find a somewhere to expect our none-code files to exist in
@@ -14,7 +15,8 @@ const loadingAssets = Promise.all([
     // add the icon to the app as close to immediately after load as we can
     assets.registerAsset('icon', 'icon.png').then(() => window.icon = assets.get('icon').loaded),
     assets.registerAsset('sprite-vert', 'shaders/sprite.vert.glsl'),
-    assets.registerAsset('sprite-frag', 'shaders/sprite.frag.glsl')
+    assets.registerAsset('sprite-frag', 'shaders/sprite.frag.glsl'),
+    assets.registerAsset('generic', 'tiles/generic.svg')
 ]);
 
 // get gl instance
@@ -24,9 +26,11 @@ const {
     loop,
     Image
 } = initFrame({ isGles3: true, isWebGL2: true, title: 'Rag Nag' });
+const windowSize = new Point(window.width, window.height);
 
 // setup renderer
 const render = new WebGLRenderer(canvas, -window.width / 2, window.width / 2, window.height / 2, -window.height / 2, 0, 16);
+render.renderOffscreen = false;
 window.on('resize', () => {
     render.setStageSize(
         -window.width / 2,
@@ -34,6 +38,8 @@ window.on('resize', () => {
         -window.height / 2,
         window.height / 2
     );
+    windowSize[0] = window.width;
+    windowSize[1] = window.height;
 });
 render.setBackgroundColor(0,0,0,0);
 render.setLayerGroupOrdering(['main', 'gui']);
@@ -56,49 +62,40 @@ const ctx = debug.getContext('2d', { willReadFrequently: true });
     const debugDraw = render.createDrawable('gui');
     render.updateDrawableSkinId(debugDraw, debugSkin);
     render.updateDrawablePosition(debugDraw, [-window.width / 2, window.height / 2]);
-    const skin = render.createBitmapSkin(assets.get('icon').loaded, 1);
-    let cam = [0,0];
-    const tileSize = [20,20];
-    const tilesWide = Math.ceil(window.width / tileSize[0]) +2;
-    const tilesTall = Math.ceil(window.height / tileSize[1]) +2;
-    const reserve = tilesWide * tilesTall;
-    const map = new Array(2048).fill(0).map(() => new Array(2048).fill(0).map(() => [1]));
-    const drawTiles = [];
+    const genericTile = render.createBitmapSkin(assets.get('generic').loaded, 1);
+    const cam = new Point(0,0);
+    let camRot = 0;
+    const tileSize = new Point(20,20);
+    const tilesSize = new Point(Math.max(...windowSize)).mul(1.15).div(tileSize).add(1).clamp(1).add(2);
+    const map = new Array(4096).fill(0).map(() => new Array(1024).fill(0).map(() => [0]));
+    const drawTiles = new Array(tilesSize[0] * tilesSize[1]).fill(-1).map(() => render.createDrawable('main'));
     const fallbackTile = 1;
-    const tileTypes = [null, skin];
-    for (let i = 0, x = 0, y = 0; i < reserve; x = ++i % tilesWide, y = Math.floor(i / tilesWide)) {
-        const draw = render.createDrawable('main');
-        render.updateDrawableSkinId(draw, skin);
-        render.updateDrawablePosition(draw, [
-            (((x * tileSize[0]) + tileSize[0] / 2) - (window.width / 2)) - tileSize[0], 
-            (((y * tileSize[1]) + tileSize[1] / 2) - (window.height / 2)) - tileSize[1]
-        ]);
-        const [sx,sy] = render._allSkins[skin].size;
-        render.updateDrawableScale(draw, [(tileSize[0] / sx) * 100, (tileSize[1] / sy) * 100]);
-        drawTiles.push(draw);
+    const tileTypes = [null, genericTile];
+    function updateTileDraw(draw, idx) {
+        const p = Point.fromGrid(idx, tilesSize[0]);
+        render.updateDrawablePosition(draw, p.clone()
+            .mul(tileSize) // move coords to screen space
+            .add(tileSize.clone().div(2)) // offset forward by half a tile so tile center is bottom left
+            .sub(tilesSize.clone().div(2).mul(tileSize)) // align all of these tiles as if they are one solid drawable
+            .sub(tileSize) // offset back by one tile to abscure the left and bottom edges
+            .add(cam.clone().mod(tileSize)) // offset by the camera, wrapping back around when necessary
+            .rotate(camRot) // rotate by the camera rotation
+        );
+        render.updateDrawableDirection(draw, 180 - camRot);
+        const mp = p.clone().sub(cam.clone().div(tileSize).clamp(1));
+        const [type] = map[mp[0]]?.[mp[1]] ?? [];
+        if (!tileTypes[type])
+            return render.updateDrawableVisible(draw, false);
+        render.updateDrawableVisible(draw, true);
+        if (!render._allSkins[tileTypes[type]]) 
+            return render.updateDrawableSkinId(draw, tileTypes[fallbackTile]);
+        render.updateDrawableSkinId(draw, tileTypes[type]);
+        const size = render._allDrawables[draw].skin.size;
+        render.updateDrawableScale(draw, tileSize.clone().div(size).mul(100));
     }
-    
-    const startedAt = Date.now();
+
     loop(t => {
-        drawTiles.forEach((draw, idx) => {
-            const x = idx % tilesWide;
-            const y = Math.floor(idx / tilesWide);
-            render.updateDrawablePosition(draw, [
-                ((((x * tileSize[0]) + tileSize[0] / 2) - (window.width / 2)) - tileSize[0]) + (cam[0] % tileSize[0]),
-                ((((y * tileSize[1]) + tileSize[1] / 2) - (window.height / 2)) - tileSize[1]) + (cam[1] % tileSize[1])
-            ]);
-            const mx = x - Math.floor(cam[0] / tileSize[0]);
-            const my = y - Math.floor(cam[1] / tileSize[1]);
-            const [type] = map[mx]?.[my] ?? [];
-            if (!tileTypes[type])
-                return render.updateDrawableVisible(draw, false);
-            render.updateDrawableVisible(draw, true);
-            if (!render._allSkins[tileTypes[type]]) 
-                return render.updateDrawableSkinId(draw, tileTypes[fallbackTile]);
-            render.updateDrawableSkinId(draw, tileTypes[type]);
-        });
-        cam[0] = (t - startedAt) / 50;
-        cam[1] = (t - startedAt) / 50;
+        drawTiles.forEach(updateTileDraw);
         // draw frame
         render.draw();
 
