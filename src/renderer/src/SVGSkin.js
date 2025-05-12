@@ -25,6 +25,7 @@ class SVGSkin extends Skin {
 
         /** @type {Image} */
         this._svgImage = new Image();
+        this._svgImage.onerror = err => console.warn(err, 'at SVGSkin setSVG');
 
         /** @type {boolean} */
         this._svgImageLoaded = false;
@@ -252,7 +253,7 @@ class SVGSkin extends Skin {
 
     /**
      * Set the contents of this skin to a snapshot of the provided SVG data.
-     * @param {string} svgData - new SVG to use.
+     * @param {string} svgText - new SVG to use.
      * @param {Array<number>} [rotationCenter] - Optional rotation center for the SVG. If not supplied, it will be
      * calculated from the bounding box
      * @fires Skin.event:WasAltered
@@ -260,7 +261,16 @@ class SVGSkin extends Skin {
     setSVG(svgText, rotationCenter) {
         this._svgImageLoaded = false;
 
-        const { x, y, width, height } = svgTag.viewBox.baseVal;
+        const vbMatch = svgText.match(/viewBox\s*=\s*"(.*?)"/i);
+        let x,y, width,height;
+        if (!vbMatch) {
+            const wMatch = svgText.match(/width\s*=\s*"(.*?)"/i);
+            const hMatch = svgText.match(/height\s*=\s*"(.*?)"/i);
+            x = 0;
+            y = 0;
+            width = Number(wMatch?.[1] ?? 0);
+            height = Number(hMatch?.[1] ?? 0);
+        } else [x,y, width,height] = vbMatch[1].split(/,\s*/g).map(Number);
         // While we're setting the size before the image is loaded, this doesn't cause the skin to appear with the wrong
         // size for a few frames while the new image is loading, because we don't emit the `WasAltered` event, telling
         // drawables using this skin to update, until the image is loaded.
@@ -297,7 +307,7 @@ class SVGSkin extends Skin {
             this.emitWasAltered();
         };
 
-        this._svgImage.src = `data:image/svg+xml;utf8,${encodeURIComponent(svgText)}`;
+        this._svgImage.src = `data:image/svg+xml;base64,${btoa(svgText)}`;
     }
 }
 

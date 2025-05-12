@@ -1,0 +1,194 @@
+const Point = require('./point');
+
+class TileSpace {
+    static drawableLayer = 'tiles';
+    static tiles = {
+        none: 0,
+        error: 1,
+        topLeft: 2,
+        topRight: 3,
+        bottomLeft: 4,
+        bottomRight: 5,
+        left: 6,
+        top: 7,
+        right: 8,
+        bottom: 9
+    };
+    /** @type {{ [key: number]: number }} */
+    skins = {};
+    /** @type {import('glfw-raub').Window} */
+    window = null;
+    /** @type {import('./renderer/src/RenderWebGL')} */
+    render = null;
+    /** @type {[number][]} */
+    map = [];
+    /** @type {Point} */
+    wh = new Point(0,0);
+    /** @type {number[]} */
+    drawables = [];
+    /** @type {Point} */
+    screenWh = new Point(0,0);
+    /** @type {Point} */
+    tileWh = new Point(0,0);
+    camera = {
+        /** @type {Point} */
+        pos: new Point(0,0),
+        /** @type {number} */
+        dir: 90,
+        /** @type {Point} */
+        scale: new Point(1,1)
+    };
+    /**
+     * @param {import('webgl-raub').Window} window 
+     * @param {import('./renderer/src/RenderWebGL')} render 
+     * @param {number} tileWidth 
+     * @param {number} tileHeight 
+     * @param {number} width 
+     * @param {number} height 
+     */
+    constructor(window, render, tileWidth, tileHeight, width, height) {
+        this.window = window;
+        this.render = render;
+        this.wh = new Point(width, height);
+        this.tileWh = new Point(tileWidth, tileHeight);
+        this.resizeViewport(window.width, window.height);
+        this.resizeWorld(width, height);
+    }
+    /**
+     * Resize the map thats used to make the world space
+     * @param {number} width 
+     * @param {number} height 
+     */
+    resizeWorld(width, height) {
+        this.wh = new Point(width, height);
+        this.map = new Array(this.wh[0] * this.wh[1]).fill([])
+            .map((_, i) => {
+                return [TileSpace.tiles.error];
+                const left = (i % this.wh[0]) === 0;
+                const right = (i % this.wh[0]) === (this.wh[0] -1);
+                const top = Math.floor(i / this.wh[0]) === 0
+                const bottom = Math.floor(i / this.wh[0]) === (this.wh[1] -1);
+                if (top && left) return [TileSpace.tiles.topLeft];
+                if (top && !right && !left) return [TileSpace.tiles.top];
+                if (top && right) return [TileSpace.tiles.topRight];
+                if (right && !top && !bottom) return [TileSpace.tiles.right];
+                if (bottom && right) return [TileSpace.tiles.bottomRight];
+                if (bottom && !right && !left ) return [TileSpace.tiles.bottom];
+                if (bottom && left) return [TileSpace.tiles.bottomLeft];
+                if (left && !top && !bottom) return [TileSpace.tiles.left];
+                return [TileSpace.tiles.none];
+            });
+    }
+    /**
+     * Resize the grid space such that it tiles over the entire given width and height
+     * @param {number} width 
+     * @param {number} height 
+     */
+    resizeViewport(width, height) {
+        while (this.drawables.length)
+            this.render.destroyDrawable(this.drawables.pop(), TileSpace.drawableLayer);
+        this.screenWh = new Point(width, height).div(this.tileWh).add(3).clamp(1);
+        this.drawables = new Array(this.screenWh[0] * this.screenWh[1]).fill(-1)
+            .map(() => this.render.createDrawable(TileSpace.drawableLayer));
+    }
+    /**
+     * Loads in all the assets this space needs
+     * @param {import('./assets').Assets} assets 
+     */
+    async loadAssets(assets) {
+        const error = await assets.registerAsset('error', 'tiles/error.svg');
+        this.skins[TileSpace.tiles.error] = this.render.createSVGSkin(error, [0,0]);
+        const topLeft = await assets.registerAsset('top-left', 'tiles/top-left.svg');
+        this.skins[TileSpace.tiles.topLeft] = this.render.createSVGSkin(topLeft, [0,0]);
+        const top = await assets.registerAsset('top', 'tiles/top.svg');
+        this.skins[TileSpace.tiles.top] = this.render.createSVGSkin(top, [0,0]);
+        const topRight = await assets.registerAsset('top-right', 'tiles/top-right.svg');
+        this.skins[TileSpace.tiles.topRight] = this.render.createSVGSkin(topRight, [0,0]);
+        const right = await assets.registerAsset('right', 'tiles/right.svg');
+        this.skins[TileSpace.tiles.right] = this.render.createSVGSkin(right, [0,0]);
+        const bottomRight = await assets.registerAsset('bottom-right', 'tiles/bottom-right.svg');
+        this.skins[TileSpace.tiles.bottomRight] = this.render.createSVGSkin(bottomRight, [0,0]);
+        const bottom = await assets.registerAsset('bottom', 'tiles/bottom.svg');
+        this.skins[TileSpace.tiles.bottom] = this.render.createSVGSkin(bottom, [0,0]);
+        const bottomLeft = await assets.registerAsset('bottom-left', 'tiles/bottom-left.svg');
+        this.skins[TileSpace.tiles.bottomLeft] = this.render.createSVGSkin(bottomLeft, [0,0]);
+        const left = await assets.registerAsset('left', 'tiles/left.svg');
+        this.skins[TileSpace.tiles.left] = this.render.createSVGSkin(left, [0,0]);
+    }
+    /**
+     * Converts the world space coords to screen space
+     * @param {Point} point The point, in world space
+     * @returns {Point} The point, in screen space
+     */
+    worldToScreen(point) {
+        return point.clone()
+            .mul(this.tileWh) // move coords to screen space
+            // .sub(this.screenWh.clone().div(2).mul(this.tileWh)) // align all of these tiles as if they are one solid drawable
+            .sub(this.tileWh) // offset back by one tile to abscure the left and bottom edges
+            .add(this.camera.pos.clone().mod(this.tileWh)) // offset by the camera, wrapping back around when necessary
+            .rotate(this.camera.dir) // rotate by the camera rotation
+            .mul(this.camera.scale);
+    }
+    /**
+     * Converts a screen space coord to world space
+     * @param {number} x The X axis of the screen coord
+     * @param {number} y The Y axis of the screen coord
+     * @returns {Point} The world space point
+     */
+    screenToWorld(x,y) {
+        return new Point(x, y)
+            .scale(1, -1)
+            .translate(0, this.window.height)
+            .add(this.screenWh.clone()
+                .div(2)
+                .mul(this.tileWh)
+                .scale(this.camera.scale)
+                .scale(-1, 1)
+                .sub([this.window.width, this.window.height])
+            )
+            .rotate(this.camera.dir)
+            .div(this.camera.scale)
+            .div(this.tileWh)
+            .translate(1, 2)
+            .sub(this.camera.pos.clone().div(this.tileWh).clamp(1))
+            .clamp(1);
+    }
+    /**
+     * Updates the properties of a drawable to the latest state
+     * @param {number} draw The id of the drawable
+     * @param {Point} point The coords of this drawable, in world space
+     * @param {[number]} tile The tile draw on this drawable
+     */
+    updateTileDrawable(draw, point, [type]) {
+        this.render.updateDrawablePosition(draw, this.worldToScreen(point));
+        this.render.updateDrawableDirection(draw, 180 - this.camera.dir);
+
+        // dont draw tile type 0 (empty)
+        if (type === 0)
+            return this.render.updateDrawableVisible(draw, false);
+        // make sure this drawable is showing incase it was previously marked empty
+        this.render.updateDrawableVisible(draw, true);
+        // if the renderer doesnt actually have this tile type, use the error type instead
+        if (!this.render._allSkins[this.skins[type]]) 
+            return this.render.updateDrawableSkinId(draw, this.skins[TileSpace.tiles.error]);
+
+        this.render.updateDrawableSkinId(draw, this.skins[type]);
+        // compute the size that forces the requested skin inside the tile size
+        const size = this.render._allDrawables[draw].skin.size;
+        this.render.updateDrawableScale(draw, this.tileWh.clone().div(size).mul(100).mul(this.camera.scale));
+    }
+    draw() {
+        // make sure cam never gets excesively large due to circularity
+        this.camera.pos.mod([(this.wh[0] * this.tileWh[0]), Infinity]);
+        this.drawables.forEach((id, idx) => {
+            const p = Point.fromGrid(idx, this.screenWh[0]);
+            const mapPos = p.clone()
+                .add([this.wh[0] * 2, 0])
+                .sub(this.camera.pos.clone().div(this.tileWh).clamp(1))
+                .mod([this.wh[0], Infinity])
+                .toIndex(this.wh[0]);
+            this.updateTileDrawable(id, p, this.map[mapPos] ?? [0]);
+        })
+    }
+}
+module.exports = TileSpace

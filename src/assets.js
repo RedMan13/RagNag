@@ -1,7 +1,7 @@
 const path = require('node:path');
 const { constants, ...fs } = require('node:fs/promises');
 const Image = require('image-raub');
-const { registerFont, loadImage, createCanvas } = require('canvas');
+const { registerFont } = require('canvas');
 /**
  * @typedef {{
  *   create(path: string): Promise<unknown>;
@@ -28,19 +28,8 @@ const loaders = [
         types: ['png']
     },
     {
-        async create(path) {
-            const img = await loadImage(path);
-            const can = createCanvas(img.width,img.height);
-            const ctx = can.getContext('2d');
-            ctx.drawImage(img, 0,0);
-            const data = ctx.getImageData(0,0, can.width,can.height);
-            return Image.fromPixels(data.width, data.height, 32, Buffer.from(data.data));
-        },
-        /** @param {Image} instance */
-        destroy(instance) {
-            // @ts-ignore javascript wont actually stop us here, so do it anyways.
-            instance.data.data = new Uint8Array(4);
-        },
+        create(path) { return fs.readFile(path, 'utf8'); },
+        destroy(instance) {},
         types: ['svg']
     },
     {
@@ -117,10 +106,12 @@ class Assets {
      * @param {string} id The id to assign to this asset. Must not be the same as any other existing id.
      * @param {string} url The path inside al sources to get this file from.
      * @param {boolean} lazy If this file should only actually be loaded into memory when the asset is requested.
+     * @returns {Promise<unknown>} The result of the load, or nothing if lazy
      */
-    async registerAsset(id, url, lazy) {
+    registerAsset(id, url, lazy) {
         this.assets[id] = new Asset(id, url, lazy);
-        if (!lazy) await this.assets[id].load(this.sources).then(() => {});
+        if (!lazy) return this.assets[id].load(this.sources);
+        return Promise.resolve();
     }
     /**
      * Gets an asset, loading it if its not already.

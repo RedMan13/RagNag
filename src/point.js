@@ -13,6 +13,14 @@ class Point extends Float32Array {
         this[0] = x;
         this[1] = y ?? x;
     }
+    /**
+     * Converts this point into a 2D array index
+     * @param {number} width The width of the space to make an index for
+     * @returns {number} The index number of this point
+     */
+    toIndex(width) {
+        return this[0] + (this[1] * width);
+    }
 
     /**
      * Rotates a point around 0,0
@@ -149,6 +157,15 @@ class Point extends Float32Array {
         if (p2?.length !== 2) p2 = [p2,p2];
         this[0] **= p2[0];
         this[1] **= p2[1];
+        return this;
+    }
+    /**
+     * Sets this point to its absolute
+     * @returns {Point} This point
+     */
+    abs() {
+        this[0] = Math.abs(this[0]);
+        this[1] = Math.abs(this[1]);
         return this;
     }
 }

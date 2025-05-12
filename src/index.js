@@ -1,10 +1,14 @@
 const { init: initFrame } = require("3d-core-raub");
 const { Assets } = require("./assets.js");
-const { createCanvas } = require('canvas');
+const TileSpace = require('./tile-drawing.js');
+const { createCanvas, ImageData } = require('canvas');
+global.window = {};
+global.window.ImageData = ImageData;
 const WebGLRenderer = require('./renderer/src/index.js');
 const path = require('node:path');
 const { hsvToRgb } = require('./renderer/src/util/color-conversions.js');
 const Point = require('./point.js');
+const { keys, handleKeys, names } = require('./key-actions.js');
 const fs = require('fs');
 
 // find a somewhere to expect our none-code files to exist in
@@ -13,10 +17,9 @@ const assets = global.assets = new Assets();
 assets.addSource(path.resolve(hostDir, 'assets'));
 const loadingAssets = Promise.all([
     // add the icon to the app as close to immediately after load as we can
-    assets.registerAsset('icon', 'icon.png').then(() => window.icon = assets.get('icon').loaded),
+    assets.registerAsset('icon', 'icon.png').then(icon => window.icon = icon),
     assets.registerAsset('sprite-vert', 'shaders/sprite.vert.glsl'),
     assets.registerAsset('sprite-frag', 'shaders/sprite.frag.glsl'),
-    assets.registerAsset('generic', 'tiles/generic.svg')
 ]);
 
 // get gl instance
@@ -26,6 +29,7 @@ const {
     loop,
     Image
 } = initFrame({ isGles3: true, isWebGL2: true, title: 'Rag Nag' });
+window.ImageData = ImageData;
 const windowSize = new Point(window.width, window.height);
 
 // setup renderer
@@ -42,7 +46,8 @@ window.on('resize', () => {
     windowSize[1] = window.height;
 });
 render.setBackgroundColor(0,0,0,0);
-render.setLayerGroupOrdering(['main', 'gui']);
+render.setLayerGroupOrdering([TileSpace.drawableLayer, 'cursor', 'debugger']);
+const tiles = new TileSpace(window, render, 20,20, 4,4);
 
 // stats for days :money_mouth:
 let start = Date.now();
@@ -54,50 +59,47 @@ const idealFps = 60;
 // stats debugger canvas
 const debug = createCanvas(256,256);
 const ctx = debug.getContext('2d', { willReadFrequently: true });
+const debugSkin = render.createBitmapSkin(debug, 1, [0,0]);
+const debugDraw = render.createDrawable('debugger');
+render.updateDrawableSkinId(debugDraw, debugSkin);
+render.updateDrawablePosition(debugDraw, [-window.width / 2, window.height / 2]);
 
 (async () => {
     await loadingAssets;
-    /** @param {import('canvas').CanvasRenderingContext2D} ctx  */
-    const debugSkin = render.createBitmapSkin(debug, 1, [0,0]);
-    const debugDraw = render.createDrawable('gui');
-    render.updateDrawableSkinId(debugDraw, debugSkin);
-    render.updateDrawablePosition(debugDraw, [-window.width / 2, window.height / 2]);
-    const genericTile = render.createBitmapSkin(assets.get('generic').loaded, 1);
-    const cam = new Point(0,0);
-    let camRot = 0;
-    const tileSize = new Point(20,20);
-    const tilesSize = new Point(Math.max(...windowSize)).mul(1.15).div(tileSize).add(1).clamp(1).add(2);
-    const map = new Array(4096).fill(0).map(() => new Array(1024).fill(0).map(() => [0]));
-    const drawTiles = new Array(tilesSize[0] * tilesSize[1]).fill(-1).map(() => render.createDrawable('main'));
-    const fallbackTile = 1;
-    const tileTypes = [null, genericTile];
-    function updateTileDraw(draw, idx) {
-        const p = Point.fromGrid(idx, tilesSize[0]);
-        render.updateDrawablePosition(draw, p.clone()
-            .mul(tileSize) // move coords to screen space
-            .add(tileSize.clone().div(2)) // offset forward by half a tile so tile center is bottom left
-            .sub(tilesSize.clone().div(2).mul(tileSize)) // align all of these tiles as if they are one solid drawable
-            .sub(tileSize) // offset back by one tile to abscure the left and bottom edges
-            .add(cam.clone().mod(tileSize)) // offset by the camera, wrapping back around when necessary
-            .rotate(camRot) // rotate by the camera rotation
-        );
-        render.updateDrawableDirection(draw, 180 - camRot);
-        const mp = p.clone().sub(cam.clone().div(tileSize).clamp(1));
-        const [type] = map[mp[0]]?.[mp[1]] ?? [];
-        if (!tileTypes[type])
-            return render.updateDrawableVisible(draw, false);
-        render.updateDrawableVisible(draw, true);
-        if (!render._allSkins[tileTypes[type]]) 
-            return render.updateDrawableSkinId(draw, tileTypes[fallbackTile]);
-        render.updateDrawableSkinId(draw, tileTypes[type]);
-        const size = render._allDrawables[draw].skin.size;
-        render.updateDrawableScale(draw, tileSize.clone().div(size).mul(100));
-    }
+    await tiles.loadAssets(assets);
+    
+    let cursor = 1;
+    let cursorPos = 0;
+    const cursorDraw = render.createDrawable('cursor');
+    render.updateDrawableVisible(cursorDraw, false);
+
+    keys['Camera Left']     = [[names.A], false, () => tiles.camera.pos[0] -= 200 * dt, 'Moves the debug/painting camera left'];
+    keys['Camera Right']    = [[names.D], false, () => tiles.camera.pos[0] += 200 * dt, 'Moves the debug/painting camera right'];
+    keys['Camera Up']       = [[names.W], false, () => tiles.camera.pos[1] -= 200 * dt, 'Moves the debug/painting camera up'];
+    keys['Camera Down']     = [[names.S], false, () => tiles.camera.pos[1] += 200 * dt, 'Moves the debug/painting camera down'];
+    keys['Camera Zoom In']  = [[names.ShiftLeft], false, () => tiles.camera.scale.add(2 * dt), 'Zooms the debug/painting camera in'];
+    keys['Camera Zoom Out'] = [[names.ControlLeft], false, () => tiles.camera.scale.sub(2 * dt), 'Zooms the debug/painting camera out'];
+    keys['Place Tile']      = [[names.MouseLeft], false, () => {
+        if (!(cursorPos in tiles.map)) return;
+        map[cursorPos] = [cursor];
+    }, 'Sets the type of the currently hovered tile to the selected type']
 
     loop(t => {
-        drawTiles.forEach(updateTileDraw);
+        const screenPos = tiles.screenToWorld(window.cursorPos.x, window.cursorPos.y);
+        cursorPos = screenPos.clone()
+            .add([tiles.wh[0] * 2, 0])
+            .sub(tiles.camera.pos.clone().div(tiles.tileWh).clamp(1))
+            .mod([tiles.wh[0], Infinity])
+            .toIndex(tiles.wh[0]);
+        if (!(cursorPos in tiles.map))
+            render.updateDrawableVisible(cursorDraw, false);
+        else
+            tiles.updateTileDrawable(cursorDraw, screenPos, [cursor]);
+        tiles.draw();
+
         // draw frame
         render.draw();
+        handleKeys(window);
 
         // calculate stats
         dt = (Date.now() - start) / 1000;
