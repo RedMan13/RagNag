@@ -295,6 +295,8 @@ class SVGSkin extends Skin {
 
             this.resetMIPs();
 
+            const rotCommentM = svgText.match(/<!--\s*rotationCenter\s*:\s*(-?[0-9]*(\.[0-9]+))\s*:\s*(-?[0-9]*(\.[0-9]+))\s*-->\s*$/);
+            if (rotCommentM && !rotationCenter) rotationCenter = [Number(rotCommentM[1]), Number(rotCommentM[2])];
             if (typeof rotationCenter === "undefined")
                 rotationCenter = this.calculateRotationCenter();
             // Compensate for viewbox offset.

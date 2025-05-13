@@ -47,7 +47,7 @@ window.on('resize', () => {
 });
 render.setBackgroundColor(0,0,0,0);
 render.setLayerGroupOrdering([TileSpace.drawableLayer, 'cursor', 'debugger']);
-const tiles = new TileSpace(window, render, 20,20, 4,4);
+const tiles = new TileSpace(window, render, 20,20, 20,20);
 
 // stats for days :money_mouth:
 let start = Date.now();
