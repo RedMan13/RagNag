@@ -12,6 +12,7 @@ const PenSkin = require('./PenSkin');
 const RenderConstants = require('./RenderConstants');
 const ShaderManager = require('./ShaderManager');
 const SVGSkin = require('./SVGSkin');
+const GridSkin = require('./GridSkin');
 const TextBubbleSkin = require('./TextBubbleSkin');
 const TextCostumeSkin = require('./TextCostumeSkin');
 const EffectTransform = require('./EffectTransform');
@@ -549,6 +550,27 @@ class RenderWebGL extends EventEmitter {
         newSkin.setSVG(svgData, rotationCenter);
         this._allSkins[skinId] = newSkin;
         return skinId;
+    }
+
+    /**
+     * Create a new grid skin.
+     * @returns {!int} the ID for the new skin.
+     */
+    createGridSkin () {
+        const skinId = this._nextSkinId++;
+        const newSkin = new GridSkin(skinId, this);
+        this._allSkins[skinId] = newSkin;
+        return skinId;
+    }
+    addGridSkinTexture(skinId, other) {
+        if (this._allSkins[skinId] instanceof SVGSkin) {
+            this._allSkins[skinId].addSkin(other);
+            return;
+        }
+
+        const newSkin = new GridSkin(skinId, this);
+        newSkin.assets = [other];
+        this._reskin(skinId, newSkin);
     }
 
     /**

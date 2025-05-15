@@ -1,46 +1,42 @@
 const twgl = require("twgl.js");
 
-const Skin = require("./Skin");
+const PenSkin = require("./PenSkin");
 const ShaderManager = require("./ShaderManager");
 const { createCanvas, Image } = require('canvas');
 
 /**
- * All scaled renderings of the SVG are stored in an array. The 1.0 scale of
- * the SVG is stored at the 8th index. The smallest possible 1 / 256 scale
+ * All scaled renderings of the SVGs are stored in an array. The 1.0 scale of
+ * the SVGs is stored at the 8th index. The smallest possible 1 / 256 scale
  * rendering is stored at the 0th index.
  * @const {number}
  */
 const INDEX_OFFSET = 8;
 
-class SVGSkin extends Skin {
+class GridSkin extends PenSkin {
     /**
-     * Create a new SVG skin.
+     * Create a new grid skin.
      * @param {!int} id - The ID for this Skin.
-     * @param {!RenderWebGL} renderer - The renderer which will use this skin.
+     * @param {import('./RenderWebGL')} renderer - The renderer which will use this skin.
      * @constructor
-     * @extends Skin
+     * @extends PenSkin
      */
     constructor(id, renderer) {
         super(id, renderer);
 
-        /** @type {Image} */
-        this._svgImage = new Image();
-        this._svgImage.onerror = err => console.warn(err, 'at SVGSkin setSVG');
+        /** @type {number} */
+        this._selfDrawable = renderer.createDrawable('temp');
 
-        /** @type {boolean} */
-        this._svgImageLoaded = false;
+        /** @type {Skin[]} */
+        this.assets = [];
+
+        /** @type {number[]} */
+        this._tileSize = [0, 0];
 
         /** @type {Array<number>} */
         this._size = [0, 0];
 
         /** @type {Array<number>} */
         this._transform = [0, 0];
-
-        /** @type {import('canvas').Canvas} */
-        this._canvas = createCanvas(1,1);
-
-        /** @type {import('canvas').CanvasRenderingContext2D} */
-        this._context = this._canvas.getContext("2d", { willReadFrequently: true });
 
         /** @type {Array<WebGLTexture>} */
         this._scaledMIPs = [];
@@ -125,49 +121,27 @@ class SVGSkin extends Skin {
         if (!transform[0]) transform = [0, 0];
         if (!transform[1]) transform = [0, 0];
 
-        // we scale up transform because 100% is a 45 degree angle (half the image width)
-        // we also add 1 to it so this adds size ratther then remove size
-        const tx = (transform[0] * 100) / 200 + 1;
-        const ty = (transform[1] * 100) / 200 + 1;
-        const [width, height] = this._size;
-        this._canvas.width = width * scale * tx;
-        this._canvas.height = height * scale * ty;
         if (
-            this._canvas.width <= 0 ||
-            this._canvas.height <= 0 ||
-            // Even if the canvas at the current scale has a nonzero size, the image's dimensions are floored
-            // pre-scaling; e.g. if an image has a width of 0.4 and is being rendered at 3x scale, the canvas will have
-            // a width of 1, but the image's width will be rounded down to 0 on some browsers (Firefox) prior to being
-            // drawn at that scale, resulting in an IndexSizeError if we attempt to draw it.
-            this._svgImage.naturalWidth <= 0 ||
-            this._svgImage.naturalHeight <= 0
+            this._tileSize[0] <= 0 ||
+            this._tileSize[1] <= 0 
         )
-            return super.getTexture();
-        this._context.clearRect(0, 0, this._canvas.width, this._canvas.height);
-        // console.log(transform);
-        this._context.setTransform(scale, transform[0], transform[1], scale, 0, 0);
-        this._context.drawImage(this._svgImage, 0, 0);
-
-        // webgl-raub is incapable of loading textures from the 2d canvas, so we convert it to something it can load from.
-        // pass the image data directly out instead of through image-raub since they are virtually identical internally
-        const textureData = this._context.getImageData(0,0, this._canvas.width, this._canvas.height);
-
-        const textureOptions = {
-            auto: false,
-            wrap: this._renderer.gl.CLAMP_TO_EDGE,
-            src: textureData,
-            premultiplyAlpha: true,
-        };
-
-        const mip = twgl.createTexture(this._renderer.gl, textureOptions);
-
-        // Check if this is the largest MIP created so far. Currently, silhouettes only get scaled up.
-        if (isLargestMIP) {
-            this._silhouette.update(textureData);
-            this._largestMIPScale = scale;
+            return this._emptyImageTexture;
+        const width = this.assets.length * this._tileSize[0];
+        const height = this._tileSize[1];
+        this._nativeSize = [width, height];
+        this.setRenderQuality(scale);
+        this._renderer.penClear(this._id);
+        for (let i = 0, skinId = this.assets[0]; i < this.assets.length; skinId = this.assets[++i]) {
+            const skin = this._renderer._allSkins[skinId];
+            if (!skin) continue;
+            this._renderer.updateDrawablePosition(this._selfDrawable, [i * this._tileSize[0], this._tileSize[1] / 2]);
+            const max = Math.max(skin.size[0] / this._tileSize[0], skin.size[1] / this._tileSize[1]);
+            this._renderer.updateDrawableScale(this._selfDrawable, [1 / max, 1 / max]);
+            this._renderer.updateDrawableSkinId(this._selfDrawable, skinId);
+            this._renderer.penStamp(this._id, this._selfDrawable);
         }
 
-        return mip;
+        return this._texture;
     }
 
     updateSilhouette(scale = [100, 100]) {
@@ -252,64 +226,25 @@ class SVGSkin extends Skin {
     }
 
     /**
-     * Set the contents of this skin to a snapshot of the provided SVG data.
-     * @param {string} svgText - new SVG to use.
-     * @param {Array<number>} [rotationCenter] - Optional rotation center for the SVG. If not supplied, it will be
-     * calculated from the bounding box
+     * Add a skin as an asset for this skin
+     * @param {number} id - The skin id to be used inside of this skin.
      * @fires Skin.event:WasAltered
      */
-    setSVG(svgText, rotationCenter) {
-        this._svgImageLoaded = false;
-
-        const vbMatch = svgText.match(/viewBox\s*=\s*"(.*?)"/i);
-        let x,y, width,height;
-        if (!vbMatch) {
-            const wMatch = svgText.match(/width\s*=\s*"(.*?)"/i);
-            const hMatch = svgText.match(/height\s*=\s*"(.*?)"/i);
-            x = 0;
-            y = 0;
-            width = Number(wMatch?.[1] ?? 0);
-            height = Number(hMatch?.[1] ?? 0);
-        } else [x,y, width,height] = vbMatch[1].split(/,\s*/g).map(Number);
-        // While we're setting the size before the image is loaded, this doesn't cause the skin to appear with the wrong
-        // size for a few frames while the new image is loading, because we don't emit the `WasAltered` event, telling
-        // drawables using this skin to update, until the image is loaded.
-        // We need to do this because the VM reads the skin's `size` directly after calling `setSVG`.
-        // TODO: return a Promise so that the VM can read the skin's `size` after the image is loaded.
-        this._size[0] = width;
-        this._size[1] = height;
-
-        // If there is another load already in progress, replace the old onload to effectively cancel the old load
-        this._svgImage.onload = () => {
-            if (width === 0 || height === 0) {
-                super.setEmptyImageData();
-                return;
-            }
-
-            const maxDimension = Math.ceil(Math.max(width, height));
-            const rendererMax = this._renderer.maxTextureDimension;
-            let testScale = 2;
-            for (testScale; maxDimension * testScale <= rendererMax; testScale *= 2) {
-                this._maxTextureScale = testScale;
-            }
-
-
-            const rotCommentM = svgText.match(/<!--\s*rotationCenter\s*:\s*(-?[0-9]*(\.[0-9]+))\s*:\s*(-?[0-9]*(\.[0-9]+))\s*-->\s*$/);
-            if (rotCommentM && !rotationCenter) rotationCenter = [Number(rotCommentM[1]), Number(rotCommentM[2])];
-            if (typeof rotationCenter === "undefined")
-                rotationCenter = this.calculateRotationCenter();
-            // Compensate for viewbox offset.
-            // See https://github.com/LLK/scratch-render/pull/90.
-            this._rotationCenter[0] = rotationCenter[0] - x;
-            this._rotationCenter[1] = rotationCenter[1] - y;
-
-            this._svgImageLoaded = true;
-
-            this.emitWasAltered();
-        };
-
-        this._svgImage.src = `data:image/svg+xml;base64,${btoa(svgText)}`;
+    addSkin(id) {
+        this.assets.push(id);
+        this.resetMIPs();
+        this.emitWasAltered();
+    }
+    /**
+     * Sets the size of all tiles 
+     * @param {[number,number]} size The size
+     */
+    setTileSize(size) {
+        this._tileSize[0] = size[0];
+        this._tileSize[1] = size[1];
+        this.resetMIPs();
+        this.emitWasAltered();
     }
 }
 
-module.exports = SVGSkin;
+module.exports = GridSkin;

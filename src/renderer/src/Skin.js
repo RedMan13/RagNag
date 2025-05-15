@@ -11,7 +11,7 @@ class Skin {
      * @constructor
      */
     constructor (id, renderer) {
-        /** @type {RenderWebGL} */
+        /** @type {import('./RenderWebGL')} */
         this._renderer = renderer;
 
         /** @type {int} */

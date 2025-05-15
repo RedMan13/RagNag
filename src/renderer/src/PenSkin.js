@@ -36,7 +36,7 @@ class PenSkin extends Skin {
      * @extends Skin
      * @listens RenderWebGL#event:NativeSizeChanged
      */
-    constructor (id, renderer) {
+    constructor (id, renderer, noEvent) {
         super(id, renderer);
 
         /** @type {Array<number>} */
@@ -151,9 +151,11 @@ class PenSkin extends Skin {
         }
 
         this.onNativeSizeChanged = this.onNativeSizeChanged.bind(this);
-        this._renderer.on(RenderConstants.Events.NativeSizeChanged, this.onNativeSizeChanged);
+        if (!noEvent) {
+            this._renderer.on(RenderConstants.Events.NativeSizeChanged, this.onNativeSizeChanged);
 
-        this._setCanvasSize(renderer.getNativeSize());
+            this._setCanvasSize(renderer.getNativeSize());
+        }
     }
 
     /**

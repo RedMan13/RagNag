@@ -46,7 +46,7 @@ window.on('resize', () => {
     windowSize[1] = window.height;
 });
 render.setBackgroundColor(0,0,0,0);
-render.setLayerGroupOrdering([TileSpace.drawableLayer, 'cursor', 'debugger']);
+render.setLayerGroupOrdering(['temp', TileSpace.drawableLayer, 'cursor', 'debugger']);
 const tiles = new TileSpace(window, render, 20,20, 20,20);
 
 // stats for days :money_mouth:
