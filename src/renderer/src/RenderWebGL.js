@@ -553,27 +553,6 @@ class RenderWebGL extends EventEmitter {
     }
 
     /**
-     * Create a new grid skin.
-     * @returns {!int} the ID for the new skin.
-     */
-    createGridSkin () {
-        const skinId = this._nextSkinId++;
-        const newSkin = new GridSkin(skinId, this);
-        this._allSkins[skinId] = newSkin;
-        return skinId;
-    }
-    addGridSkinTexture(skinId, other) {
-        if (this._allSkins[skinId] instanceof SVGSkin) {
-            this._allSkins[skinId].addSkin(other);
-            return;
-        }
-
-        const newSkin = new GridSkin(skinId, this);
-        newSkin.assets = [other];
-        this._reskin(skinId, newSkin);
-    }
-
-    /**
      * Create a new PenSkin - a skin which implements a Scratch pen layer.
      * @returns {!int} the ID for the new skin.
      */
