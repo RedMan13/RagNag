@@ -12,7 +12,6 @@ const PenSkin = require('./PenSkin');
 const RenderConstants = require('./RenderConstants');
 const ShaderManager = require('./ShaderManager');
 const SVGSkin = require('./SVGSkin');
-const GridSkin = require('./GridSkin');
 const TextBubbleSkin = require('./TextBubbleSkin');
 const TextCostumeSkin = require('./TextCostumeSkin');
 const EffectTransform = require('./EffectTransform');

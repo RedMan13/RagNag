@@ -34,9 +34,7 @@ class TileSpace {
         /** @type {Point} */
         pos: new Point(0,0),
         /** @type {number} */
-        dir: 90,
-        /** @type {Point} */
-        scale: new Point(1,1)
+        dir: 90
     };
     /**
      * @param {import('webgl-raub').Window} window 
@@ -70,14 +68,14 @@ class TileSpace {
                         const right = x === (this.wh[0] -1);
                         const top = y === 0
                         const bottom = y === (this.wh[1] -1);
-                        if (top && left) return [TileSpace.tiles.topLeft];
-                        if (top && !right && !left) return [TileSpace.tiles.top];
-                        if (top && right) return [TileSpace.tiles.topRight];
-                        if (right && !top && !bottom) return [TileSpace.tiles.right];
-                        if (bottom && right) return [TileSpace.tiles.bottomRight];
-                        if (bottom && !right && !left ) return [TileSpace.tiles.bottom];
-                        if (bottom && left) return [TileSpace.tiles.bottomLeft];
-                        if (left && !top && !bottom) return [TileSpace.tiles.left];
+                        if ( top &&                       left) return [TileSpace.tiles.topLeft];
+                        if ( top &&            !right && !left) return [TileSpace.tiles.top];
+                        if ( top &&             right         ) return [TileSpace.tiles.topRight];
+                        if (!top && !bottom &&  right         ) return [TileSpace.tiles.right];
+                        if (         bottom &&  right         ) return [TileSpace.tiles.bottomRight];
+                        if (         bottom && !right && !left) return [TileSpace.tiles.bottom];
+                        if (         bottom &&            left) return [TileSpace.tiles.bottomLeft];
+                        if (!top && !bottom &&            left) return [TileSpace.tiles.left];
                         return [TileSpace.tiles.none];
                     })
             );
@@ -128,9 +126,9 @@ class TileSpace {
             .mul(this.tileWh) // move coords to screen space
             .sub(this.screenWh.clone().div(2).mul(this.tileWh)) // align all of these tiles as if they are one solid drawable
             .add(this.tileWh.clone().scale(1, -1)) // offset back by one tile to abscure the left and bottom edges
-            .add(this.camera.pos.clone().mod(this.tileWh)) // offset by the camera, wrapping back around when necessary
+            .sub(this.camera.pos.clone().mod(this.tileWh)) // offset by the camera, wrapping back around when necessary
             .rotate(this.camera.dir) // rotate by the camera rotation
-            .mul(this.camera.scale);
+            .scale(-1, 1)
     }
     /**
      * Converts a screen space coord to world space
@@ -140,20 +138,17 @@ class TileSpace {
      */
     screenToWorld(x,y) {
         return new Point(x, y)
-            .scale(1, -1)
-            .translate(0, this.window.height)
             .add(this.screenWh.clone()
-                .div(2)
                 .mul(this.tileWh)
-                .scale(this.camera.scale)
                 .scale(-1, 1)
                 .sub([this.window.width, this.window.height])
+                .div(2)
             )
             .rotate(this.camera.dir)
-            .div(this.camera.scale)
             .div(this.tileWh)
-            .translate(1, 2)
-            .sub(this.camera.pos.clone().div(this.tileWh).clamp(1))
+            .scale(-1,-1)
+            .add(this.screenWh)
+            .translate(-.5, 1.5)
             .clamp(1);
     }
     /**
@@ -178,16 +173,15 @@ class TileSpace {
         this.render.updateDrawableSkinId(draw, this.skins[type]);
         // compute the size that forces the requested skin inside the tile size
         const size = Math.max(...this.render._allDrawables[draw].skin.size);
-        this.render.updateDrawableScale(draw, this.tileWh.clone().div(size).mul(100).mul(this.camera.scale));
+        this.render.updateDrawableScale(draw, this.tileWh.clone().div(size).mul(100));
     }
     draw() {
+        this.camera.pos.mod([this.wh[0] * this.tileWh[0], Infinity])
         this.drawables.forEach((id, idx) => {
             const p = Point.fromGrid(idx, this.screenWh[0]);
             const mapPos = p.clone()
-                .sub(this.camera.pos.clone().div(this.tileWh).clamp(1))
-                // .mod([this.wh[0], Infinity])
-                .scale(-1, 1)
-                .translate(this.wh[0], 0)
+                .add(this.camera.pos.clone().div(this.tileWh).clamp(1))
+                .mod([this.wh[0], Infinity])
                 .clamp(1);
             this.updateTileDrawable(id, p, this.map[mapPos[0]]?.[mapPos[1]] ?? [0]);
         })

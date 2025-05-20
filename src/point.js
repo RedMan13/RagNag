@@ -144,8 +144,8 @@ class Point extends Float32Array {
      */
     mod(p2) {
         if (p2?.length !== 2) p2 = [p2,p2];
-        this[0] %= p2[0];
-        this[1] %= p2[1];
+        if (Number.isFinite(p2[0])) this[0] = ((this[0] % p2[0]) + p2[0]) % p2[0];
+        if (Number.isFinite(p2[1])) this[1] = ((this[1] % p2[1]) + p2[1]) % p2[1];
         return this;
     }
     /**
