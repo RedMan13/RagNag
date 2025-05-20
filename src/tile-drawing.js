@@ -138,6 +138,7 @@ class TileSpace {
      */
     screenToWorld(x,y) {
         return new Point(x, y)
+            .add(this.camera.pos.clone().mod(this.tileWh).scale(1,-1))
             .add(this.screenWh.clone()
                 .mul(this.tileWh)
                 .scale(-1, 1)
@@ -148,7 +149,7 @@ class TileSpace {
             .div(this.tileWh)
             .scale(-1,-1)
             .add(this.screenWh)
-            .translate(-.5, 1.5)
+            .translate(-0.5, 1.5)
             .clamp(1);
     }
     /**

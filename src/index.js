@@ -43,6 +43,10 @@ let cursorPos = new Point(0,0);
 const cursorDraw = render.createDrawable('cursor');
 render.updateDrawableVisible(cursorDraw, false);
 const tiles = new TileSpace(window, render, 20,20, 400,100);
+fs.readFile('./save.json', 'utf8', (err, data) => {
+    if (err) return;
+    tiles.map = JSON.parse(data);
+})
 const stats = {
     start: Date.now(),
     dt: 1,
@@ -218,16 +222,20 @@ debugTiles.createTile(function(ctx) {
     keys['Camera Up']       = [[names.W], false, () => tiles.camera.pos[1] += 200 * stats.dt, 'Moves the debug/painting camera up'];
     keys['Camera Down']     = [[names.S], false, () => tiles.camera.pos[1] -= 200 * stats.dt, 'Moves the debug/painting camera down'];
     keys['Place Tile']      = [[names.MouseLeft], false, () => {
-        if (!(cursorPos in tiles.map)) return;
-        map[cursorPos] = [cursor];
+        if (!tiles.map[cursorPos[0]]?.[cursorPos[1]]) return;
+        tiles.map[cursorPos[0]][cursorPos[1]] = [cursor];
     }, 'Sets the type of the currently hovered tile to the selected type']
 
+    let lastSaved = Date.now() - 1000;
     loop(t => {
         const screenPos = tiles.screenToWorld(window.cursorPos.x, window.cursorPos.y);
-        cursorPos = screenPos.clone().add(tiles.camera.pos.clone().div(tiles.tileWh));
-        /*if (cursorPos[0] > tiles.wh[0] || cursorPos[0] < 0 ||cursorPos[1] > tiles.wh[1] || cursorPos[1] < 0 )
+        cursorPos = screenPos.clone().add(tiles.camera.pos.clone()
+            .div(tiles.tileWh))
+            .clamp(1)
+            .mod([tiles.wh[0], Infinity]);
+        if (!tiles.map[cursorPos[0]]?.[cursorPos[1]])
             render.updateDrawableVisible(cursorDraw, false);
-        else*/
+        else
             tiles.updateTileDrawable(cursorDraw, screenPos, [cursor]);
         tiles.draw();
 
@@ -235,6 +243,11 @@ debugTiles.createTile(function(ctx) {
         render.draw();
         handleKeys(window);
 
+        // handle autosave
+        if ((t - lastSaved) > 1000) {
+            fs.writeFile('./save.json', JSON.stringify(tiles.map), err => { if (err) throw err; });
+            lastSaved = t;
+        }
 
         // calculate stats
         stats.dt = (Date.now() - stats.start) / 1000;
