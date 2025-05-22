@@ -1,6 +1,6 @@
 const glfw = require('glfw-raub');
 
-module.exports.names = {
+const names = module.exports.names = {
     'Escape': glfw.KEY_ESCAPE,
     'F1': glfw.KEY_F1,
     'F2': glfw.KEY_F2,
@@ -128,6 +128,12 @@ module.exports.names = {
     'Mouse7': -7,
     'Mouse8': -8,
 };
+const descriptives = module.exports.descriptives = Object.fromEntries(Object.entries(names)
+    .map(([name, value]) => [value, name
+        .split('')
+        .map(char => char.charCodeAt() & 0b01000000 ? char : ` ${char}`)
+        .join('')
+        .trimStart()]));
 const activated = {};
 const keys = module.exports.keys = {}
 /** @param {import('glfw-raub').Window} window */
@@ -140,4 +146,7 @@ module.exports.handleKeys = function(window) {
         if (down) activated[name] = true;
         action();
     }
+}
+module.exports.stringifyKey = function(name) {
+    return keys[name][0].map(keyId => descriptives[keyId]).join(' + ');
 }

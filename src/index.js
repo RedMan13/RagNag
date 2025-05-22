@@ -1,16 +1,18 @@
+const { ImageData } = require('canvas');
+global.window = {};
+global.window.ImageData = ImageData;
 const { init: initFrame } = require("3d-core-raub");
 const { Assets } = require("./assets.js");
 const TileSpace = require('./tile-drawing.js');
 const { DebuggerTiles } = require('./debuggers.js');
-const { ImageData } = require('canvas');
-global.window = {};
-global.window.ImageData = ImageData;
 const WebGLRenderer = require('./renderer/src/index.js');
 const path = require('node:path');
 const { hsvToRgb } = require('./renderer/src/util/color-conversions.js');
 const Point = require('./point.js');
 const { keys, handleKeys, names } = require('./key-actions.js');
 const fs = require('fs');
+const Pong = require('./pong.js');
+const MineSweeper = require('./minesweeper.js');
 
 // find a somewhere to expect our none-code files to exist in
 const hostDir = process.env.HOST || path.resolve('.');
@@ -37,12 +39,12 @@ const windowSize = new Point(window.width, window.height);
 const render = new WebGLRenderer(canvas, -window.width / 2, window.width / 2, window.height / 2, -window.height / 2, 0, 16);
 render.renderOffscreen = false;
 render.setBackgroundColor(0,0,0,0);
-render.setLayerGroupOrdering(['temp', TileSpace.drawableLayer, 'cursor', 'debugger']);
+render.setLayerGroupOrdering(['temp', TileSpace.drawableLayer, 'cursor', 'gui', 'debugger']);
 let cursor = TileSpace.tiles.error;
 let cursorPos = new Point(0,0);
 const cursorDraw = render.createDrawable('cursor');
 render.updateDrawableVisible(cursorDraw, false);
-const tiles = new TileSpace(window, render, 20,20, 400,100);
+const tiles = new TileSpace(window, render, 20,20, 400,100, true);
 fs.readFile('./save.json', 'utf8', (err, data) => {
     if (err) return;
     tiles.map = JSON.parse(data);
@@ -216,12 +218,15 @@ debugTiles.createTile(function(ctx) {
 (async () => {
     await loadingAssets;
     await tiles.loadAssets(assets);
+    const miner = new MineSweeper(render, window, tiles);
 
     keys['Camera Left']     = [[names.A], false, () => tiles.camera.pos[0] -= 200 * stats.dt, 'Moves the debug/painting camera left'];
     keys['Camera Right']    = [[names.D], false, () => tiles.camera.pos[0] += 200 * stats.dt, 'Moves the debug/painting camera right'];
     keys['Camera Up']       = [[names.W], false, () => tiles.camera.pos[1] += 200 * stats.dt, 'Moves the debug/painting camera up'];
     keys['Camera Down']     = [[names.S], false, () => tiles.camera.pos[1] -= 200 * stats.dt, 'Moves the debug/painting camera down'];
     keys['Place Tile']      = [[names.MouseLeft], false, () => {
+        miner.uncover(...cursorPos);
+        return;
         if (!tiles.map[cursorPos[0]]?.[cursorPos[1]]) return;
         tiles.map[cursorPos[0]][cursorPos[1]] = [cursor];
     }, 'Sets the type of the currently hovered tile to the selected type']
@@ -238,6 +243,8 @@ debugTiles.createTile(function(ctx) {
         else
             tiles.updateTileDrawable(cursorDraw, screenPos, [cursor]);
         tiles.draw();
+        miner.grid.camera.pos = tiles.camera.pos;
+        miner.tick();
 
         // draw frame
         render.draw();

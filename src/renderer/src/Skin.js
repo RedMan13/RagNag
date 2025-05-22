@@ -2,6 +2,7 @@ const twgl = require('twgl.js');
 
 const RenderConstants = require('./RenderConstants');
 const Silhouette = require('./Silhouette');
+const { ImageData } = require('canvas');
 
 class Skin {
     /**

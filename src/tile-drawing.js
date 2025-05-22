@@ -12,7 +12,19 @@ class TileSpace {
         left: 6,
         top: 7,
         right: 8,
-        bottom: 9
+        bottom: 9,
+        unopened: 10,
+        flagged: 11,
+        bombs0: 12,
+        bombs1: 13,
+        bombs2: 14,
+        bombs3: 15,
+        bombs4: 16,
+        bombs5: 17,
+        bombs6: 18,
+        bombs7: 19,
+        bombs8: 20,
+        bomb: 21
     };
     /** @type {{ [key: number]: number }} */
     skins = {};
@@ -44,11 +56,12 @@ class TileSpace {
      * @param {number} width 
      * @param {number} height 
      */
-    constructor(window, render, tileWidth, tileHeight, width, height) {
+    constructor(window, render, tileWidth, tileHeight, width, height, wrap = false) {
         this.window = window;
         this.render = render;
         this.wh = new Point(width, height);
         this.tileWh = new Point(tileWidth, tileHeight);
+        this.wrap = wrap;
         this.resizeViewport(window.width, window.height);
         this.resizeWorld(width, height);
     }
@@ -97,24 +110,28 @@ class TileSpace {
      * @param {import('./assets').Assets} assets 
      */
     async loadAssets(assets) {
-        const error = await assets.registerAsset('error', 'tiles/error.svg');
-        this.skins[TileSpace.tiles.error] = this.render.createSVGSkin(error);
-        const topLeft = await assets.registerAsset('top-left', 'tiles/top-left.svg');
-        this.skins[TileSpace.tiles.topLeft] = this.render.createSVGSkin(topLeft);
-        const top = await assets.registerAsset('top', 'tiles/top.svg');
-        this.skins[TileSpace.tiles.top] = this.render.createSVGSkin(top);
-        const topRight = await assets.registerAsset('top-right', 'tiles/top-right.svg');
-        this.skins[TileSpace.tiles.topRight] = this.render.createSVGSkin(topRight);
-        const right = await assets.registerAsset('right', 'tiles/right.svg');
-        this.skins[TileSpace.tiles.right] = this.render.createSVGSkin(right);
-        const bottomRight = await assets.registerAsset('bottom-right', 'tiles/bottom-right.svg');
-        this.skins[TileSpace.tiles.bottomRight] = this.render.createSVGSkin(bottomRight);
-        const bottom = await assets.registerAsset('bottom', 'tiles/bottom.svg');
-        this.skins[TileSpace.tiles.bottom] = this.render.createSVGSkin(bottom);
-        const bottomLeft = await assets.registerAsset('bottom-left', 'tiles/bottom-left.svg');
-        this.skins[TileSpace.tiles.bottomLeft] = this.render.createSVGSkin(bottomLeft);
-        const left = await assets.registerAsset('left', 'tiles/left.svg');
-        this.skins[TileSpace.tiles.left] = this.render.createSVGSkin(left);
+        this.skins[TileSpace.tiles.error] =       this.render.createSVGSkin(await assets.registerAsset('error', 'tiles/error.svg'));
+        this.skins[TileSpace.tiles.topLeft] =     this.render.createSVGSkin(await assets.registerAsset('top-left', 'tiles/top-left.svg'));
+        this.skins[TileSpace.tiles.top] =         this.render.createSVGSkin(await assets.registerAsset('top', 'tiles/top.svg'));
+        this.skins[TileSpace.tiles.topRight] =    this.render.createSVGSkin(await assets.registerAsset('top-right', 'tiles/top-right.svg'));
+        this.skins[TileSpace.tiles.right] =       this.render.createSVGSkin(await assets.registerAsset('right', 'tiles/right.svg'));
+        this.skins[TileSpace.tiles.bottomRight] = this.render.createSVGSkin(await assets.registerAsset('bottom-right', 'tiles/bottom-right.svg'));
+        this.skins[TileSpace.tiles.bottom] =      this.render.createSVGSkin(await assets.registerAsset('bottom', 'tiles/bottom.svg'));
+        this.skins[TileSpace.tiles.bottomLeft] =  this.render.createSVGSkin(await assets.registerAsset('bottom-left', 'tiles/bottom-left.svg'));
+        this.skins[TileSpace.tiles.left] =        this.render.createSVGSkin(await assets.registerAsset('left', 'tiles/left.svg'));
+
+        this.skins[TileSpace.tiles.unopened] = this.render.createBitmapSkin(await assets.registerAsset('unopened', 'tiles/unopened.png'), 1);
+        this.skins[TileSpace.tiles.flagged] =  this.render.createBitmapSkin(await assets.registerAsset('flagged', 'tiles/flagged.png'), 1);
+        this.skins[TileSpace.tiles.bombs0] =   this.render.createBitmapSkin(await assets.registerAsset('zero-bombs', 'tiles/0-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs1] =   this.render.createBitmapSkin(await assets.registerAsset('one-bomb', 'tiles/1-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs2] =   this.render.createBitmapSkin(await assets.registerAsset('two-bombs', 'tiles/2-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs3] =   this.render.createBitmapSkin(await assets.registerAsset('three-bombs', 'tiles/3-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs4] =   this.render.createBitmapSkin(await assets.registerAsset('four-bombs', 'tiles/4-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs5] =   this.render.createBitmapSkin(await assets.registerAsset('five-bombs', 'tiles/5-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs6] =   this.render.createBitmapSkin(await assets.registerAsset('six-bombs', 'tiles/6-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs7] =   this.render.createBitmapSkin(await assets.registerAsset('seven-bombs', 'tiles/7-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bombs8] =   this.render.createBitmapSkin(await assets.registerAsset('eight-bombs', 'tiles/8-bombs.png'), 1);
+        this.skins[TileSpace.tiles.bomb] =     this.render.createBitmapSkin(await assets.registerAsset('bomb', 'tiles/bomb.png'), 1);
     }
     /**
      * Converts the world space coords to screen space
@@ -177,13 +194,15 @@ class TileSpace {
         this.render.updateDrawableScale(draw, this.tileWh.clone().div(size).mul(100));
     }
     draw() {
-        this.camera.pos.mod([this.wh[0] * this.tileWh[0], Infinity])
+        if (this.wrap) this.camera.pos.mod([this.wh[0] * this.tileWh[0], Infinity])
         this.drawables.forEach((id, idx) => {
             const p = Point.fromGrid(idx, this.screenWh[0]);
-            const mapPos = p.clone()
-                .add(this.camera.pos.clone().div(this.tileWh).clamp(1))
-                .mod([this.wh[0], Infinity])
-                .clamp(1);
+            const mapPos = this.wrap 
+                ? p.clone()
+                    .add(this.camera.pos.clone().div(this.tileWh).clamp(1))
+                    .mod([this.wh[0], Infinity])
+                    .clamp(1)
+                : p.clone().add(this.camera.pos.clone().div(this.tileWh).clamp(1)).clamp(1);
             this.updateTileDrawable(id, p, this.map[mapPos[0]]?.[mapPos[1]] ?? [0]);
         })
     }
