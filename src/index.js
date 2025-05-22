@@ -219,16 +219,16 @@ debugTiles.createTile(function(ctx) {
     await loadingAssets;
     await tiles.loadAssets(assets);
     const miner = new MineSweeper(render, window, tiles);
+    const pong = new Pong(render, window);
 
     keys['Camera Left']     = [[names.A], false, () => tiles.camera.pos[0] -= 200 * stats.dt, 'Moves the debug/painting camera left'];
     keys['Camera Right']    = [[names.D], false, () => tiles.camera.pos[0] += 200 * stats.dt, 'Moves the debug/painting camera right'];
     keys['Camera Up']       = [[names.W], false, () => tiles.camera.pos[1] += 200 * stats.dt, 'Moves the debug/painting camera up'];
     keys['Camera Down']     = [[names.S], false, () => tiles.camera.pos[1] -= 200 * stats.dt, 'Moves the debug/painting camera down'];
     keys['Place Tile']      = [[names.MouseLeft], false, () => {
-        miner.uncover(...cursorPos);
-        return;
         if (!tiles.map[cursorPos[0]]?.[cursorPos[1]]) return;
         tiles.map[cursorPos[0]][cursorPos[1]] = [cursor];
+        miner.uncover(...cursorPos);
     }, 'Sets the type of the currently hovered tile to the selected type']
 
     let lastSaved = Date.now() - 1000;
@@ -243,8 +243,8 @@ debugTiles.createTile(function(ctx) {
         else
             tiles.updateTileDrawable(cursorDraw, screenPos, [cursor]);
         tiles.draw();
-        miner.grid.camera.pos = tiles.camera.pos;
         miner.tick();
+        pong.tick();
 
         // draw frame
         render.draw();
