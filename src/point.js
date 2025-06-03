@@ -168,5 +168,27 @@ class Point extends Float32Array {
         this[1] = Math.abs(this[1]);
         return this;
     }
+    /**
+     * Computes the minimum of this point
+     * @param {Point|number} cap The minimum value to clamp to
+     * @returns {Point} This point
+     */
+    min(cap) {
+        if (cap?.length !== 2) cap = [cap,cap];
+        this[0] = Math.min(this[0], cap[0]);
+        this[1] = Math.min(this[1], cap[1]);
+        return this;
+    }
+    /**
+     * Computes the maximum of this point
+     * @param {Point|number} cap The maximum value to clamp to
+     * @returns {Point} This point
+     */
+    max(cap) {
+        if (cap?.length !== 2) cap = [cap,cap];
+        this[0] = Math.max(this[0], cap[0]);
+        this[1] = Math.max(this[1], cap[1]);
+        return this;
+    }
 }
 module.exports = Point;

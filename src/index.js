@@ -4,6 +4,7 @@ global.window.ImageData = ImageData;
 const { init: initFrame } = require("3d-core-raub");
 const { Assets } = require("./assets.js");
 const TileSpace = require('./tile-drawing.js');
+const Physics = require('./physics.js');
 const { DebuggerTiles } = require('./debuggers.js');
 const WebGLRenderer = require('./renderer/src/index.js');
 const path = require('node:path');
@@ -39,15 +40,19 @@ const windowSize = new Point(window.width, window.height);
 const render = new WebGLRenderer(canvas, -window.width / 2, window.width / 2, window.height / 2, -window.height / 2, 0, 16);
 render.renderOffscreen = false;
 render.setBackgroundColor(0,0,0,0);
-render.setLayerGroupOrdering(['temp', TileSpace.drawableLayer, 'cursor', 'gui', 'debugger']);
+render.setLayerGroupOrdering(['temp', TileSpace.drawableLayer, 'cursor', 'entities', 'gui', 'debugger']);
 let cursor = TileSpace.tiles.error;
 let cursorPos = new Point(0,0);
 const cursorDraw = render.createDrawable('cursor');
 render.updateDrawableVisible(cursorDraw, false);
 const tiles = new TileSpace(window, render, 20,20, 400,100, true);
+const entities = new Physics(tiles, render);
+setInterval(() => entities.tick(), 1/20);
 fs.readFile('./save.json', 'utf8', (err, data) => {
     if (err) return;
-    tiles.map = JSON.parse(data);
+    try {
+        tiles.map = JSON.parse(data);
+    } catch (err) {}
 })
 const stats = {
     start: Date.now(),
@@ -210,6 +215,12 @@ debugTiles.createTile(function(ctx) {
     const cursorText = `cursor: ${cursor} [${cursorPos.map(num => num.toFixed(0)).join(', ')}]`;
     ctx.strokeText(cursorText, 0,y += 17);
     ctx.fillText(cursorText, 0,y);
+    const playerPosText = `player XY: ${entities.entities[0]?.pos}`;
+    ctx.strokeText(playerPosText, 0,y += 17);
+    ctx.fillText(playerPosText, 0,y);
+    const playerVelText = `player vel: ${entities.entities[0]?.vel}`;
+    ctx.strokeText(playerVelText, 0,y += 17);
+    ctx.fillText(playerVelText, 0,y);
     const tilesText = `Tiles: ${tiles.wh[0] * tiles.wh[1]} [${tiles.wh.join(', ')}]`;
     ctx.strokeText(tilesText, 0,y += 17);
     ctx.fillText(tilesText, 0,y);
@@ -218,33 +229,47 @@ debugTiles.createTile(function(ctx) {
 (async () => {
     await loadingAssets;
     await tiles.loadAssets(assets);
-    const miner = new MineSweeper(render, window, tiles);
-    const pong = new Pong(render, window);
+    await entities.loadAssets(assets);
 
-    keys['Camera Left']     = [[names.A], false, () => tiles.camera.pos[0] -= 200 * stats.dt, 'Moves the debug/painting camera left'];
-    keys['Camera Right']    = [[names.D], false, () => tiles.camera.pos[0] += 200 * stats.dt, 'Moves the debug/painting camera right'];
-    keys['Camera Up']       = [[names.W], false, () => tiles.camera.pos[1] += 200 * stats.dt, 'Moves the debug/painting camera up'];
-    keys['Camera Down']     = [[names.S], false, () => tiles.camera.pos[1] -= 200 * stats.dt, 'Moves the debug/painting camera down'];
-    keys['Place Tile']      = [[names.MouseLeft], false, () => {
+    const player = entities.createEntity(100,100,0);
+    let movingPlayer = false;
+    const camOff = new Point(0,0);
+    keys['Camera Left']           = [[names.A], false, () => camOff[0] -= 200 * stats.dt, 'Moves the debug/painting camera left'];
+    keys['Camera Right']          = [[names.D], false, () => camOff[0] += 200 * stats.dt, 'Moves the debug/painting camera right'];
+    keys['Camera Up']             = [[names.W], false, () => camOff[1] += 200 * stats.dt, 'Moves the debug/painting camera up'];
+    keys['Camera Down']           = [[names.S], false, () => camOff[1] -= 200 * stats.dt, 'Moves the debug/painting camera down'];
+    keys['Player Go To']          = [[names.E], false, () => { movingPlayer = true; entities.moveEntity(player, cursorPos[0] * tiles.tileWh[0], cursorPos[1] * tiles.tileWh[1]) }]
+    keys['Clear Camera Position'] = [[names.Q], false, () => camOff.set(0,0), 'Resets the offset curently given to the camera'];
+    keys['Jump']                  = [[names.M], false, () => entities.nudgeEntity(player, 0,5), 'Makes the player jump'];
+    keys['Crouch']                = [[names.Period], false, () => {}, 'Makes the player crouch down'];
+    keys['Move Left']             = [[names.N], false, () => entities.nudgeEntity(player, -20,0), 'Makes the player move left'];
+    keys['Move Right']            = [[names.Comma], false, () => entities.nudgeEntity(player, 20,0), 'Makes the player move right'];
+    keys['Place Tile']            = [[names.MouseLeft], false, () => {
         if (!tiles.map[cursorPos[0]]?.[cursorPos[1]]) return;
         tiles.map[cursorPos[0]][cursorPos[1]] = [cursor];
-        miner.uncover(...cursorPos);
     }, 'Sets the type of the currently hovered tile to the selected type']
 
     let lastSaved = Date.now() - 1000;
     loop(t => {
         const screenPos = tiles.screenToWorld(window.cursorPos.x, window.cursorPos.y);
-        cursorPos = screenPos.clone().add(tiles.camera.pos.clone()
-            .div(tiles.tileWh))
+        cursorPos = screenPos.clone()
+            .add(tiles.camera.pos.clone().div(tiles.tileWh))
             .clamp(1)
             .mod([tiles.wh[0], Infinity]);
         if (!tiles.map[cursorPos[0]]?.[cursorPos[1]])
             render.updateDrawableVisible(cursorDraw, false);
         else
-            tiles.updateTileDrawable(cursorDraw, screenPos, [cursor]);
+            tiles.updateTileDrawable(cursorDraw, screenPos.sub(windowSize.clone().div(2)), [cursor]);
+        const target = entities.entities[player].pos.clone();
+        const distance = target.clone().sub(tiles.camera.pos);
+        if (!movingPlayer) {
+            tiles.camera.pos = camOff.clone()
+                .add(tiles.camera.pos)
+                .add(distance.mul(0.20));
+        }
+        movingPlayer = false;
         tiles.draw();
-        miner.tick();
-        pong.tick();
+        entities.draw();
 
         // draw frame
         render.draw();

@@ -194,11 +194,11 @@ class TileSpace {
         this.render.updateDrawableScale(draw, this.tileWh.clone().div(size).mul(100));
     }
     draw() {
-        if (this.wrap) this.camera.pos.mod([this.wh[0] * this.tileWh[0], Infinity])
         this.drawables.forEach((id, idx) => {
             const p = Point.fromGrid(idx, this.screenWh[0]);
             const mapPos = this.wrap 
                 ? p.clone()
+                    .sub(this.screenWh.clone().div(2))
                     .add(this.camera.pos.clone().div(this.tileWh).clamp(1))
                     .mod([this.wh[0], Infinity])
                     .clamp(1)
