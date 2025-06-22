@@ -45,10 +45,13 @@ for (const name of fs.readdirSync('./patches')) {
 }
 for (const file in splices) {
     let data = fs.readFileSync(file, 'utf8');
-    let off = 0;
-    for (const [start, end, content] of splices[file].sort((a,b) => a[0] - b[0])) {
-        data = data.slice(0, start + off) + content + data.slice(end + off);
-        off += content.length - (end - start);
+    const offs = [[0,0]];
+    for (const [start, end, content] of splices[file]) {
+        const startOff = offs.findLast(([root]) => start >= root)[1];
+        const endOffIdx = offs.findLastIndex(([root]) => end >= root);
+        const endOff = offs[endOffIdx][1];
+        data = data.slice(0, start + startOff) + content + data.slice(end + endOff);
+        offs.splice(endOffIdx +1, 0, [end, endOff + (content.length - (end - start))]);
     }
     fs.writeFileSync(file, data);
 }
