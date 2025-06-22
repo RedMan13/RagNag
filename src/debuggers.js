@@ -21,7 +21,7 @@ class DebuggerTile {
     constructor(render, data, filler, w,h, x,y) {
         this.canvas = createCanvas(w,h);
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-        this.draw = render.createDrawable('debugger');
+        this.draw = render.createDrawable('debuggers');
         this.skin = render.createBitmapSkin(this.canvas);
         this.filler = filler.bind(this);
         render.updateDrawableSkinId(this.draw, this.skin);

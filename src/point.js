@@ -3,6 +3,12 @@ class Point extends Float32Array {
         width = Math.ceil(width);
         return new Point(idx % width, Math.floor(idx / width));
     }
+    static mod(num, wrap) {
+        if (!Number.isFinite(wrap)) return num;
+        return ((num % wrap) + wrap) % wrap;
+    }
+    static MAX_POINT = new Point(Number.MAX_VALUE, Number.MAX_VALUE);
+    static MIN_POINT = new Point(-Number.MAX_VALUE, -Number.MAX_VALUE);
     /**
      * Creates an abstract point that can be operated on with funtions such as .translate
      * @param {number} x The X axis of this point
@@ -77,6 +83,8 @@ class Point extends Float32Array {
      * @returns {Point} Copy of this point
      */
     clone() {
+        this[0] ||= 0;
+        this[0] ||= 0;
         return new Point(this[0], this[1]);
     }
     /**
@@ -144,8 +152,8 @@ class Point extends Float32Array {
      */
     mod(p2) {
         if (p2?.length !== 2) p2 = [p2,p2];
-        if (Number.isFinite(p2[0])) this[0] = ((this[0] % p2[0]) + p2[0]) % p2[0];
-        if (Number.isFinite(p2[1])) this[1] = ((this[1] % p2[1]) + p2[1]) % p2[1];
+        this[0] = Point.mod(this[0], p2[0]);
+        this[1] = Point.mod(this[1], p2[1]);
         return this;
     }
     /**
@@ -189,6 +197,26 @@ class Point extends Float32Array {
         this[0] = Math.max(this[0], cap[0]);
         this[1] = Math.max(this[1], cap[1]);
         return this;
+    }
+    /**
+     * Computes the vector length of this point, in comparison to some other point
+     * @param {Point?|number?} ref The point that this point will be in reference to, 0,0 when null
+     * @returns {number} The vector length of this point, relative to `ref`
+     */
+    len(ref = new Point(0,0)) {
+        if (ref?.length !== 2) ref = [ref,ref];
+        const diff = this.clone().sub(ref).pow(2);
+        return Math.sqrt(diff[0] + diff[1]);
+    }
+    /**
+     * Computes the vector direction of this point, in comparison to some toher point
+     * @param {Point?|number?} ref The point that this point will be in reference to, 0,0 when null
+     * @returns {number} The direction of this point, relative to `ref`
+     */
+    dir(ref = new Point(0,0)) {
+        if (ref?.length !== 2) ref = [ref,ref];
+        const diff = this.clone().sub(ref);
+        return (Math.atan2(diff[1], diff[0]) / Math.PI) * 180;
     }
 }
 module.exports = Point;

@@ -1,4 +1,4 @@
-const TileSpace = require('./tile-drawing');
+const TileSpace = require('./tile-drawing.js');
 
 class MineSweeper {
     /**
@@ -12,8 +12,8 @@ class MineSweeper {
         this.grid = grid;
         grid.resizeWorld(20, 20);
         grid.wrap = false;
-        grid.camera.pos[0] = -window.width / 2;
-        grid.camera.pos[1] = -window.height / 2;
+        grid.camera.pos[0] = -((grid.screenWh[0] - grid.wh[0]) * grid.tileWh[0]) / 2;
+        grid.camera.pos[1] = -((grid.screenWh[1] - grid.wh[0]) * grid.tileWh[0]) / 2;
         this.grid.map = new Array(grid.wh[0]).fill([]).map(() => new Array(grid.wh[1]).fill([0]).map(() => [TileSpace.tiles.unopened]));
         this.map = new Array(grid.wh[0]).fill([]).map(() => new Array(grid.wh[1]).fill([0]).map(() => TileSpace.tiles.bombs0));
         for (let i = 0; i < 40; i++) {
@@ -39,7 +39,7 @@ class MineSweeper {
                         this.grid.map[x][y][0] = TileSpace.tiles.bomb;
             return;
         }
-        this.grid.map[x][y][0] = this.map[x][y];
+        this.grid.map[x][y][0] = Math.min(this.map[x][y], 21);
         // recursion unwrap solution, as the board is big enough for js to complain about recursion length
         const needsTouched = [
             [x -1, y -1],
@@ -58,7 +58,7 @@ class MineSweeper {
                 const [x,y] = needsTouched[0];
                 needsTouched.splice(0, 1);
                 if (!this.map[x]?.[y]) continue;
-                this.grid.map[x][y][0] = this.map[x][y];
+                this.grid.map[x][y][0] = Math.min(this.map[x][y], 21);
                 if (this.map[x][y] === TileSpace.tiles.bombs0) {
                     for (let ox = -1; ox < 2; ox++)
                         for (let oy = -1; oy < 2; oy++)
@@ -66,7 +66,7 @@ class MineSweeper {
                                 if (ox === oy && oy === 0) continue;
                                 if (this.map[x + ox][y + oy] === TileSpace.tiles.bombs0)
                                     needsTouched.push([x + ox, y + oy]);
-                                this.grid.map[x + ox][y + oy][0] = this.map[x + ox][y + oy];
+                                this.grid.map[x + ox][y + oy][0] = Math.min(this.map[x + ox][y + oy], 21);
                             }
                 }
             }

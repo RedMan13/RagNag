@@ -65,8 +65,8 @@ class ShaderManager {
         const definesText = `${defines.join('\n')}\n`;
 
         /* eslint-disable global-require */
-        const vsFullText = definesText + assets.get('sprite-vert').loaded;
-        const fsFullText = definesText + assets.get('sprite-frag').loaded;
+        const vsFullText = definesText + assets.get('sprite-vert');
+        const fsFullText = definesText + assets.get('sprite-frag');
         /* eslint-enable global-require */
 
         return twgl.createProgramInfo(this._gl, [vsFullText, fsFullText]);

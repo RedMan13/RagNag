@@ -1,6 +1,6 @@
 const { createCanvas, ImageData } = require('canvas');
-const Point = require('./point');
-const { keys, names, stringifyKey } = require('./key-actions');
+const Point = require('./point.js');
+const { keys, names, stringifyKey } = require('./key-actions.js');
 
 class Pong {
     /** 

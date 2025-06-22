@@ -100,6 +100,10 @@ class Assets {
     sources = [];
     /** @type {{ [key: string]: Asset }} */
     assets = {};
+    /** @type {{ [key: string]: string }} */
+    loadingStatus = {};
+
+    constructor(mainDir) { this.addSource(mainDir); }
 
     /**
      * Loads in any known asset type into this loader
@@ -108,17 +112,24 @@ class Assets {
      * @param {boolean} lazy If this file should only actually be loaded into memory when the asset is requested.
      * @returns {Promise<unknown>} The result of the load, or nothing if lazy
      */
-    registerAsset(id, url, lazy) {
+    async registerAsset(id, url, lazy) {
         this.assets[id] = new Asset(id, url, lazy);
-        if (!lazy) return this.assets[id].load(this.sources);
-        return Promise.resolve();
+        if (!lazy) {
+            this.loadingStatus[id] = url;
+            const loaded = await this.assets[id].load(this.sources);
+            delete this.loadingStatus[id];
+            return loaded;
+        }
     }
     /**
      * Gets an asset, loading it if its not already.
      * @param {string} id The id of the asset to load in.
      * @returns {Asset}
      */
-    get(id) { return this.assets[id]; }
+    get(id) {
+        if (!this.assets[id].loaded) return this.assets[id].load(this.sources);
+        return this.assets[id].loaded;
+    }
     /**
      * Removes an asset, primarily intended for loading/unloading addons.
      * @param {string} id The id of the asset to remove.
@@ -130,8 +141,9 @@ class Assets {
      */
     reload() {
         for (const assetId in this.assets) {
-            const asset = this.get(assetId);
+            const asset = this.assets[assetId];
             asset.unload();
+            if (asset.lazy) continue;
             asset.load(this.sources);
         }
     }

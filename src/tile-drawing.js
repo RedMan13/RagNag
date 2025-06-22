@@ -81,14 +81,14 @@ class TileSpace {
                         const right = x === (this.wh[0] -1);
                         const top = y === 0
                         const bottom = y === (this.wh[1] -1);
-                        if ( top &&                       left) return [TileSpace.tiles.topLeft];
-                        if ( top &&            !right && !left) return [TileSpace.tiles.top];
-                        if ( top &&             right         ) return [TileSpace.tiles.topRight];
-                        if (!top && !bottom &&  right         ) return [TileSpace.tiles.right];
-                        if (         bottom &&  right         ) return [TileSpace.tiles.bottomRight];
-                        if (         bottom && !right && !left) return [TileSpace.tiles.bottom];
-                        if (         bottom &&            left) return [TileSpace.tiles.bottomLeft];
-                        if (!top && !bottom &&            left) return [TileSpace.tiles.left];
+                        // if ( top &&                       left) return [TileSpace.tiles.topLeft];
+                        if ( top /* &&            !right && !left */) return [TileSpace.tiles.botom];
+                        // if ( top &&             right         ) return [TileSpace.tiles.topRight];
+                        // if (!top && !bottom &&  right         ) return [TileSpace.tiles.right];
+                        // if (         bottom &&  right         ) return [TileSpace.tiles.bottomRight];
+                        if (         bottom /* && !right && !left */) return [TileSpace.tiles.top];
+                        // if (         bottom &&            left) return [TileSpace.tiles.bottomLeft];
+                        // if (!top && !bottom &&            left) return [TileSpace.tiles.left];
                         return [TileSpace.tiles.none];
                     })
             );
@@ -109,29 +109,29 @@ class TileSpace {
      * Loads in all the assets this space needs
      * @param {import('./assets').Assets} assets 
      */
-    async loadAssets(assets) {
-        this.skins[TileSpace.tiles.error] =       this.render.createSVGSkin(await assets.registerAsset('error', 'tiles/error.svg'));
-        this.skins[TileSpace.tiles.topLeft] =     this.render.createSVGSkin(await assets.registerAsset('top-left', 'tiles/top-left.svg'));
-        this.skins[TileSpace.tiles.top] =         this.render.createSVGSkin(await assets.registerAsset('top', 'tiles/top.svg'));
-        this.skins[TileSpace.tiles.topRight] =    this.render.createSVGSkin(await assets.registerAsset('top-right', 'tiles/top-right.svg'));
-        this.skins[TileSpace.tiles.right] =       this.render.createSVGSkin(await assets.registerAsset('right', 'tiles/right.svg'));
-        this.skins[TileSpace.tiles.bottomRight] = this.render.createSVGSkin(await assets.registerAsset('bottom-right', 'tiles/bottom-right.svg'));
-        this.skins[TileSpace.tiles.bottom] =      this.render.createSVGSkin(await assets.registerAsset('bottom', 'tiles/bottom.svg'));
-        this.skins[TileSpace.tiles.bottomLeft] =  this.render.createSVGSkin(await assets.registerAsset('bottom-left', 'tiles/bottom-left.svg'));
-        this.skins[TileSpace.tiles.left] =        this.render.createSVGSkin(await assets.registerAsset('left', 'tiles/left.svg'));
+    loadAssets(assets) {
+        this.skins[TileSpace.tiles.error] =       this.render.createSVGSkin(assets.get('error'));
+        this.skins[TileSpace.tiles.topLeft] =     this.render.createSVGSkin(assets.get('top-left'));
+        this.skins[TileSpace.tiles.top] =         this.render.createSVGSkin(assets.get('top'));
+        this.skins[TileSpace.tiles.topRight] =    this.render.createSVGSkin(assets.get('top-right'));
+        this.skins[TileSpace.tiles.right] =       this.render.createSVGSkin(assets.get('right'));
+        this.skins[TileSpace.tiles.bottomRight] = this.render.createSVGSkin(assets.get('bottom-right'));
+        this.skins[TileSpace.tiles.bottom] =      this.render.createSVGSkin(assets.get('bottom'));
+        this.skins[TileSpace.tiles.bottomLeft] =  this.render.createSVGSkin(assets.get('bottom-left'));
+        this.skins[TileSpace.tiles.left] =        this.render.createSVGSkin(assets.get('left'));
 
-        this.skins[TileSpace.tiles.unopened] = this.render.createBitmapSkin(await assets.registerAsset('unopened', 'tiles/unopened.png'), 1);
-        this.skins[TileSpace.tiles.flagged] =  this.render.createBitmapSkin(await assets.registerAsset('flagged', 'tiles/flagged.png'), 1);
-        this.skins[TileSpace.tiles.bombs0] =   this.render.createBitmapSkin(await assets.registerAsset('zero-bombs', 'tiles/0-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs1] =   this.render.createBitmapSkin(await assets.registerAsset('one-bomb', 'tiles/1-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs2] =   this.render.createBitmapSkin(await assets.registerAsset('two-bombs', 'tiles/2-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs3] =   this.render.createBitmapSkin(await assets.registerAsset('three-bombs', 'tiles/3-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs4] =   this.render.createBitmapSkin(await assets.registerAsset('four-bombs', 'tiles/4-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs5] =   this.render.createBitmapSkin(await assets.registerAsset('five-bombs', 'tiles/5-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs6] =   this.render.createBitmapSkin(await assets.registerAsset('six-bombs', 'tiles/6-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs7] =   this.render.createBitmapSkin(await assets.registerAsset('seven-bombs', 'tiles/7-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bombs8] =   this.render.createBitmapSkin(await assets.registerAsset('eight-bombs', 'tiles/8-bombs.png'), 1);
-        this.skins[TileSpace.tiles.bomb] =     this.render.createBitmapSkin(await assets.registerAsset('bomb', 'tiles/bomb.png'), 1);
+        this.skins[TileSpace.tiles.unopened] = this.render.createBitmapSkin(assets.get('unopened'), 1);
+        this.skins[TileSpace.tiles.flagged] =  this.render.createBitmapSkin(assets.get('flagged'), 1);
+        this.skins[TileSpace.tiles.bombs0] =   this.render.createBitmapSkin(assets.get('zero-bombs'), 1);
+        this.skins[TileSpace.tiles.bombs1] =   this.render.createBitmapSkin(assets.get('one-bomb'), 1);
+        this.skins[TileSpace.tiles.bombs2] =   this.render.createBitmapSkin(assets.get('two-bombs'), 1);
+        this.skins[TileSpace.tiles.bombs3] =   this.render.createBitmapSkin(assets.get('three-bombs'), 1);
+        this.skins[TileSpace.tiles.bombs4] =   this.render.createBitmapSkin(assets.get('four-bombs'), 1);
+        this.skins[TileSpace.tiles.bombs5] =   this.render.createBitmapSkin(assets.get('five-bombs'), 1);
+        this.skins[TileSpace.tiles.bombs6] =   this.render.createBitmapSkin(assets.get('six-bombs'), 1);
+        this.skins[TileSpace.tiles.bombs7] =   this.render.createBitmapSkin(assets.get('seven-bombs'), 1);
+        this.skins[TileSpace.tiles.bombs8] =   this.render.createBitmapSkin(assets.get('eight-bombs'), 1);
+        this.skins[TileSpace.tiles.bomb] =     this.render.createBitmapSkin(assets.get('bomb'), 1);
     }
     /**
      * Converts the world space coords to screen space
@@ -186,9 +186,9 @@ class TileSpace {
         this.render.updateDrawableVisible(draw, true);
         // if the renderer doesnt actually have this tile type, use the error type instead
         if (!this.render._allSkins[this.skins[type]]) 
-            return this.render.updateDrawableSkinId(draw, this.skins[TileSpace.tiles.error]);
-
-        this.render.updateDrawableSkinId(draw, this.skins[type]);
+            this.render.updateDrawableSkinId(draw, this.skins[TileSpace.tiles.error]);
+        else
+            this.render.updateDrawableSkinId(draw, this.skins[type]);
         // compute the size that forces the requested skin inside the tile size
         const size = Math.max(...this.render._allDrawables[draw].skin.size);
         this.render.updateDrawableScale(draw, this.tileWh.clone().div(size).mul(100));

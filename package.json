@@ -1,27 +1,27 @@
 {
   "name": "ragnag",
   "version": "1.0.0",
-  "main": "src/index.js",
-  "scripts": {},
+  "main": "./wrapper.js",
+  "scripts": {
+    "start": "node ."
+  },
   "keywords": [],
-  "author": "",
+  "author": "RedMan13",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "3d-core-raub": "^5.3.0",
     "canvas": "^3.1.0",
-    "three": "^0.176.0",
     "grapheme-breaker": "0.3.2",
-    "hull.js": "0.2.10",
+    "hull.js": "0.2.1",
     "ify-loader": "1.0.4",
     "linebreak": "0.3.0",
     "minilog": "3.1.0",
     "raw-loader": "^0.5.1",
-    "scratch-svg-renderer": "git+https://github.com/TurboWarp/scratch-svg-renderer.git",
+    "three": "^0.176.0",
     "twgl.js": "4.4.0"
   },
   "devDependencies": {
-    "@types/three": "^0.175.0",
     "jest": "^29.7.0"
   }
 }

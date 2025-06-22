@@ -3,7 +3,6 @@ const EventEmitter = require('events');
 const hull = require('hull.js');
 const twgl = require('twgl.js');
 
-const SVGRenderer = require('scratch-svg-renderer');
 const Skin = require('./Skin');
 const BitmapSkin = require('./BitmapSkin');
 const Drawable = require('./Drawable');
@@ -256,6 +255,7 @@ class RenderWebGL extends EventEmitter {
         this.offscreenTouching = false;
 
         this.dirty = true;
+        this.wasDirty = false;
 
         this._createGeometry();
 
@@ -338,7 +338,6 @@ class RenderWebGL extends EventEmitter {
          */
         this.exports = {
             twgl,
-            SVGRenderer,
             Drawable,
             Skin,
             BitmapSkin,
@@ -944,18 +943,11 @@ class RenderWebGL extends EventEmitter {
      * Draw all current drawables and present the frame on the canvas.
      */
     draw () {
-        // practically doesnt matter with XR enabled
-        if (!this.dirty) {
-            return;
-        }
-
         if (this.xrEnabled) {
             // dont crash, just dont draw if we dont have a layer
             // can happen when exiting
             if (!this.xrLayer) return;
         }
-
-        this.dirty = false;
 
         this._doExitDrawRegion();
 

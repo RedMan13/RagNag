@@ -1,0 +1,14 @@
+{
+    "name": "Pong",
+    "description": "Converts the entire game into Pong!",
+    "author": "RedMan13",
+    "version": "1.0",
+    "changes": [
+        ["copy", "./game.js", "minesweeper.js"],
+        ["splice", 0,0, "index.js", "const minesweeper = require('./minesweeper.js');\n"],
+        ["splice", 2503,8939, "index.js", ""],
+        ["splice", 9270,9512, "index.js", "this.minesweeper = new minesweeper(this.render, this.window, this.tiles);"],
+        ["splice", 11754,11830, "index.js", "this.minesweeper.uncover(this.cursor.pos[0],this.cursor.pos[1])"],
+        ["splice", 14432,15088, "index.js", ""]
+    ]
+}

@@ -1,0 +1,14 @@
+{
+    "name": "Pong",
+    "description": "Converts the entire game into Pong!",
+    "author": "RedMan13",
+    "version": "1.0",
+    "changes": [
+        ["copy", "./game.js", "pong.js"],
+        ["splice", 0,0, "index.js", "const Pong = require('./pong.js');\n"],
+        ["splice", 767,767, "index.js", ",\npong: 'gui'"],
+        ["splice", 2503,8939, "index.js", ""],
+        ["splice", 9270,9323, "index.js", "this.pong = new Pong(this.render, this.window);"],
+        ["splice", 14146,15146, "index.js", "this.pong.tick();"]
+    ]
+}
