@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "./wrapper.js",
   "scripts": {
-    "start": "node ."
+    "start": "node .",
+    "dev": "DEVELOP=\"true\" node ."
   },
   "keywords": [],
   "author": "RedMan13",

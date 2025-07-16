@@ -41,6 +41,7 @@ class DebuggerTile {
         const { data } = this.ctx.getImageData(0,0, this.canvas.width, this.canvas.height);
         const image = Image.fromPixels(this.canvas.width, this.canvas.height, 32, Buffer.from(data));
         this.render.updateBitmapSkin(this.skin, image, 1, [0,0]);
+        this.render.updateDrawablePosition(this.draw, [this.x,this.y]);
     }
 }
 class DebuggerTiles {
