@@ -8,6 +8,7 @@ const { hsvToRgb } = require('./renderer/src/util/color-conversions.js');
 const Point = require('./point.js');
 const { keys, handleKeys, names } = require('./key-actions.js');
 const fs = require('fs');
+const Settings = require('./settings.js');
 
 // find a somewhere to expect our none-code files to exist in
 const hostDir = process.env.HOST || path.resolve('.');
@@ -17,7 +18,8 @@ class MainGame {
         tiles: TileSpace.drawableLayer, 
         cursor: 'cursor', 
         entities: 'entities', 
-        debuggers: 'debuggers'
+        debuggers: 'debuggers',
+        settings: 'settings'
     };
 
     assets = new Assets(path.resolve(hostDir, 'assets'));
@@ -50,6 +52,8 @@ class MainGame {
     }
     movingPlayer = false;
     camOff = new Point(0,0);
+    /** @type {Settings} */
+    settings = null;
 
     constructor(window, canvas) {
         this.window = window;
@@ -240,6 +244,7 @@ class MainGame {
         });
     }
     _initKeys() {
+        keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.render), 'Opens the settings and exit menu'];
         keys['Camera Left']           = [[names.A],         false, () => this.camOff[0] -= 200 * this.stats.dt, 'Moves the debug/painting camera left'];
         keys['Camera Right']          = [[names.D],         false, () => this.camOff[0] += 200 * this.stats.dt, 'Moves the debug/painting camera right'];
         keys['Camera Up']             = [[names.W],         false, () => this.camOff[1] += 200 * this.stats.dt, 'Moves the debug/painting camera up'];
@@ -247,7 +252,9 @@ class MainGame {
         keys['Player Go To']          = [[names.E],         false, () => { this.movingPlayer = true; this.entities.moveEntity(this.player, (this.cursor.pos[0] * this.tiles.tileWh[0]) - (this.window.width / 2), (this.cursor.pos[1] * this.tiles.tileWh[1]) - (this.window.height / 2)) }]
         keys['Clear Camera Position'] = [[names.Q],         false, () => this.camOff.set(0,0), 'Resets the offset curently given to the camera'];
         keys['Jump']                  = [[names.M],         false, () => {
-            if (!Math.abs(this.entities.entities[this.player]?.collided)) return;
+            if (!this.entities.entities[this.player].gravity)
+                return this.entities.nudgeEntity(this.player, 0,20);
+            if (!this.entities.entities[this.player]?.collided) return;
             switch (this.entities.entities[this.player]?.collided) {
             case 1:
                 this.entities.nudgeEntity(this.player, 7.5,7.5); break;
@@ -257,7 +264,11 @@ class MainGame {
                 this.entities.nudgeEntity(this.player, 0,15); break;
             }
         }, 'Makes the player jump'];
-        keys['Crouch']                = [[names.Period],    false, () => this.entities.nudgeEntity(this.player, 0,-1), 'Makes the player crouch down'];
+        keys['Crouch']                = [[names.Period],    false, () => {
+            if (!this.entities.entities[this.player].gravity)
+                return this.entities.nudgeEntity(this.player, 0,-20);
+            this.entities.nudgeEntity(this.player, 0,-1);
+        }, 'Makes the player crouch down'];
         keys['Move Left']             = [[names.N],         false, () => this.entities.nudgeEntity(this.player, 20,0), 'Makes the player move left'];
         keys['Move Right']            = [[names.Comma],     false, () => this.entities.nudgeEntity(this.player, -20,0), 'Makes the player move right'];
         keys['Place Tile']            = [[names.MouseLeft], false, () => {
@@ -298,7 +309,10 @@ class MainGame {
         this.entities.loadAssets(this.assets);
     }
     start() {
-        setInterval(() => this.entities.tick(), 1/20);
+        setInterval(() => {
+            if (!this.settings)
+                this.entities.tick();
+        }, 1/20);
         this.window.loop(this.drawFrame.bind(this));
     }
     drawFrame() {
@@ -321,6 +335,8 @@ class MainGame {
         this.movingPlayer = false;
         this.tiles.draw();
         this.entities.draw();
+        if (this.settings)
+            this.settings.draw();
 
         // draw frame
         this.render.draw();

@@ -4,9 +4,7 @@ const Point = require('./point');
 class Entity {
     /** @type {import('./renderer/src/RenderWebGL')} */
     render = null;
-    /** @type {number} */
     draw = -1;
-    /** @type {number} */
     skin = 2;
     /** @type {number} */
     id = null;
@@ -18,10 +16,10 @@ class Entity {
     size = new Point(1,1);
     /** @type {number} */
     kind = null;
-    /** @type {0|1|2|3|4} */
-    collided = 0;
-    /** @type {number} */
+    /** @type {null|'left'|'right'|'down'|'up'} */
+    collided = null;
     density = 1;
+    gravity = false;
     constructor(id, render, kind, x,y) {
         this.id = id;
         this.render = render;
@@ -41,9 +39,10 @@ class Entity {
         this.pos[1] ||= 0;
         // compute air drag and friction
         this.vel[0] /= 2;
+        this.vel[1] /= 2;
         if (this.collided) this.vel[0] /= 1.5;
-        this.vel[1] -= 1;
-        this.collided = false;
+        if (this.gravity) this.vel[1] -= 1;
+        this.collided = null;
         const distance = this.vel.clone().div(tiles.tileWh).abs();
         const signs = [Math.sign(this.vel[0]), Math.sign(this.vel[1])];
         while (distance[1] > 0) {
@@ -53,10 +52,10 @@ class Entity {
                 this.vel[1] = 0;
                 if (signs[1] === -1) {
                     this.pos[1] = Math.floor(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
-                    this.collided = 3;
+                    this.collided = 'down';
                 } else {
                     this.pos[1] = Math.ceil(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
-                    this.collided = 4;
+                    this.collided = 'up';
                 }
                 break;
             }
@@ -71,10 +70,10 @@ class Entity {
                 this.vel[0] = 0;
                 if (signs[0] === -1) {
                     this.pos[0] = Math.ceil(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
-                    this.collided = 1;
+                    this.collided = 'left';
                 } else {
                     this.pos[0] = Math.floor(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
-                    this.collided = 2;
+                    this.collided = 'right';
                 }
                 break;
             }
@@ -95,19 +94,19 @@ class Entity {
             const te = ent.pos[1] + ((ent.size[1] / 2) * tiles.tileWh[1]);
             const be = ent.pos[1] - ((ent.size[1] / 2) * tiles.tileWh[1]);
             if (lem < re && lem > le && (tem <= te || bem >= be)) {
-                this.collided = 1;
+                this.collided = 'left';
                 this.pos[0] = re + leo;
             }
             if (rem < le && rem > re && (tem <= te || bem >= be)) {
-                this.collided = 2;
+                this.collided = 'right';
                 this.pos[0] = le + reo;
             }
             if (bem < te && bem > be && (lem >= le || rem <= re)) {
-                this.collided = 4;
+                this.collided = 'down';
                 this.pos[1] = te + beo;
             }
             if (tem < be && tem > te && (lem >= le || rem <= re)) {
-                this.collided = 4;
+                this.collided = 'up';
                 this.pos[1] = be + teo;
             }
         });
