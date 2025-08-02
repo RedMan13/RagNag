@@ -1,4 +1,6 @@
 const { createCanvas } = require('canvas');
+const Point = require('./point');
+
 class DebuggerTile {
     /** @type {import('canvas').Canvas} */
     canvas = null;
@@ -22,7 +24,7 @@ class DebuggerTile {
         this.canvas = createCanvas(w,h);
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         this.draw = render.createDrawable('debuggers');
-        this.skin = render.createBitmapSkin(this.canvas);
+        this.skin = render.createBitmapSkin(this.canvas, 1, [0,0]);
         this.filler = filler.bind(this);
         render.updateDrawableSkinId(this.draw, this.skin);
         this.x = x;
@@ -37,11 +39,23 @@ class DebuggerTile {
      * Render the contents of this drawable tile
      */
     renderContent() {
-        this.filler(this.ctx, this.data);
+        this.render.updateDrawablePosition(this.draw, [this.x,this.y]);
+        const isOld = this.filler(this.ctx, this.data);
+        // filler says they didnt do anything, so dont update image contents
+        if (isOld) return;
+        this.ctx.lineWidth = 2;
+        this.ctx.lineJoin = 'miter';
+        this.ctx.strokeStyle = 'red';
+        this.ctx.beginPath();
+        this.ctx.moveTo(0,0);
+        this.ctx.lineTo(this.canvas.width, 0);
+        this.ctx.lineTo(this.canvas.width, this.canvas.height);
+        this.ctx.lineTo(0, this.canvas.height);
+        this.ctx.closePath();
+        this.ctx.stroke();
         const { data } = this.ctx.getImageData(0,0, this.canvas.width, this.canvas.height);
         const image = Image.fromPixels(this.canvas.width, this.canvas.height, 32, Buffer.from(data));
         this.render.updateBitmapSkin(this.skin, image, 1, [0,0]);
-        this.render.updateDrawablePosition(this.draw, [this.x,this.y]);
     }
 }
 class DebuggerTiles {
@@ -49,6 +63,8 @@ class DebuggerTiles {
     width = 0;
     /** @type {number} */
     height = 0;
+    cursor = new Point(0,0);
+    columnWidth = 0;
     /** @type {DebuggerTile[]} */
     tiles = [];
     /** @type {import('./renderer/src/RenderWebGL')} */
@@ -61,17 +77,19 @@ class DebuggerTiles {
         this.tiles = [];
         this.data = dataCab;
         this.render = render;
+        this.cursor[0] = -this.width / 2;
+        this.cursor[1] = this.height / 2;
     }
     createTile(func, w,h) {
-        const parent = this.tiles.find(tile => (tile.y - tile.height - h) < (-this.height / 2));
-        const parentPos = parent 
-            ? [parent.x, parent.y - parent.height] 
-            : this.tiles.length <= 0 
-                ? [-this.width / 2,this.height / 2]
-                : [(this.width / 2) - w, this.height / 2];
-        const tile = new DebuggerTile(this.render, this.data, func, w,h, parentPos[0],parentPos[1]);
+        if ((this.cursor[1] - h) < (-this.height / 2)) {
+            this.cursor[0] += this.columnWidth;
+            this.cursor[1] = this.height / 2;
+        }
+        const tile = new DebuggerTile(this.render, this.data, func, w,h, this.cursor[0],this.cursor[1]);
         tile.renderContent();
         this.tiles.push(tile);
+        this.columnWidth = Math.max(this.columnWidth, w);
+        this.cursor[1] -= h;
     }
     renderTiles() {
         this.tiles.forEach(tile => tile.renderContent());

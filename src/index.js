@@ -335,8 +335,6 @@ class MainGame {
         this.movingPlayer = false;
         this.tiles.draw();
         this.entities.draw();
-        if (this.settings)
-            this.settings.draw();
 
         // draw frame
         this.render.draw();
