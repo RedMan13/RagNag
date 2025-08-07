@@ -56,11 +56,11 @@ class TextWrapper {
             const word = text.slice(lastPosition, nextBreak.position).replace(/\n+$/, '');
 
             let proposedLine = (currentLine || '').concat(word);
-            let proposedLineWidth = this._measurementProvider.measureText(proposedLine);
+            let proposedLineWidth = this._measurementProvider.measureText(proposedLine, measurementSession);
 
             if (proposedLineWidth > maxWidth) {
                 // The next word won't fit on this line. Will it fit on a line by itself?
-                const wordWidth = this._measurementProvider.measureText(word);
+                const wordWidth = this._measurementProvider.measureText(word, measurementSession);
                 if (wordWidth > maxWidth) {
                     // The next word can't even fit on a line by itself. Consume it one grapheme cluster at a time.
                     let lastCluster = 0;
@@ -68,7 +68,7 @@ class TextWrapper {
                     while (lastCluster !== (nextCluster = GraphemeBreaker.nextBreak(word, lastCluster))) {
                         const cluster = word.substring(lastCluster, nextCluster);
                         proposedLine = (currentLine || '').concat(cluster);
-                        proposedLineWidth = this._measurementProvider.measureText(proposedLine);
+                        proposedLineWidth = this._measurementProvider.measureText(proposedLine, measurementSession);
                         if ((currentLine === null) || (proposedLineWidth <= maxWidth)) {
                             // first cluster of a new line or the cluster fits
                             currentLine = proposedLine;

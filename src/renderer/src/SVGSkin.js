@@ -270,7 +270,7 @@ class SVGSkin extends Skin {
             y = 0;
             width = Number(wMatch?.[1] ?? 0);
             height = Number(hMatch?.[1] ?? 0);
-        } else [x,y, width,height] = vbMatch[1].split(/,\s*/g).map(Number);
+        } else [x,y, width,height] = vbMatch[1].split(/,\s*|\s+/g).map(Number);
         // While we're setting the size before the image is loaded, this doesn't cause the skin to appear with the wrong
         // size for a few frames while the new image is loading, because we don't emit the `WasAltered` event, telling
         // drawables using this skin to update, until the image is loaded.

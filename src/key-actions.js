@@ -148,5 +148,6 @@ module.exports.handleKeys = function(window) {
     }
 }
 module.exports.stringifyKey = function(name) {
-    return keys[name][0].map(keyId => descriptives[keyId]).join(' + ');
+    const keyIds = typeof name === 'string' ? keys[name][0] : name;
+    return keyIds.map(keyId => descriptives[keyId]).join(' + ');
 }

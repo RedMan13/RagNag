@@ -14,11 +14,14 @@ if (false != process.env.DEVELOP) {
     const MainGame = require('./src/index.js');
     const game = new MainGame(window, canvas);
     global.assets = game.assets;
-    game._initKeys();
-    game._initRenderer();
-    game._initTileSpace();
-    game._initDebugTiles();
-    game.loadAssets().then(() => game.start());
+    game.loadAssets()
+        .then(() => {
+            game._initKeys();
+            game._initRenderer();
+            game._initTileSpace();
+            game._initDebugTiles();
+            game.start()
+        });
 } else {
     fs.cpSync('./src', './run', { recursive: true });
 
@@ -71,11 +74,14 @@ if (false != process.env.DEVELOP) {
         const MainGame = require('./run/index.js');
         const game = new MainGame(window, canvas);
         global.assets = game.assets;
-        game._initKeys();
-        game._initRenderer();
-        game._initTileSpace();
-        game._initDebugTiles();
-        game.loadAssets().then(() => game.start());
+        game.loadAssets()
+            .then(() => {
+                game._initKeys();
+                game._initRenderer();
+                game._initTileSpace();
+                game._initDebugTiles();
+                game.start()
+            });
     } catch (err) {
         throw err;
     }

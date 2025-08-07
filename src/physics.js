@@ -26,7 +26,9 @@ class Entity {
         this.kind = kind;
         this.pos.set(x,y);
         this.draw = render.createDrawable('entities');
-        this.skin = kind;
+        this.skin = Physics.entityDatas[kind].skin;
+        this.size[0] = Physics.entityDatas[kind].dimensions[0];
+        this.size[1] = Physics.entityDatas[kind].dimensions[1];
     }
     /** @param {TileSpace} tiles */
     step({ tiles, maxSpeed }, neighbors) { // 400 tiles a second at 20 vel
@@ -123,7 +125,8 @@ class Entity {
     transmit(tiles) {
         const skin = this.render._allSkins[this.skin];
         this.render.updateDrawableSkinId(this.draw, this.skin);
-        this.render.updateDrawableScale(this.draw, tiles.tileWh.clone().div(skin.size).mul(this.size).mul(100));
+        const scale = tiles.tileWh.clone().div(skin.size).mul(this.size).scale(100, -100);
+        this.render.updateDrawableScale(this.draw, scale);
         this.render.updateDrawablePosition(this.draw, this.pos.clone()
             .add(tiles.camera.pos.clone().scale(1, -1))
             .sub(tiles.tileWh)
@@ -132,6 +135,11 @@ class Entity {
     }
 }
 class Physics {
+    static entityDatas = {
+        player: {
+            dimensions: [1,1.794449792]
+        }
+    }
     /** @type {TileSpace} */
     tiles = null;
     /** @type {import('./renderer/src/RenderWebGL')} */
@@ -149,7 +157,7 @@ class Physics {
         this.tiles = tiles;
     }
     loadAssets(assets) {
-
+        Physics.entityDatas.player.skin = this.render.createSVGSkin(assets.get('pang'));
     }
     createEntity(x,y, kind) {
         const id = this.ids++;

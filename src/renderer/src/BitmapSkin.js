@@ -1,7 +1,8 @@
 const twgl = require("twgl.js");
 
 const Skin = require("./Skin");
-const { Image, Canvas } = require('canvas');
+const { Canvas } = require('canvas');
+const Image = require('image-raub');
 
 class BitmapSkin extends Skin {
     /**
@@ -114,14 +115,7 @@ class BitmapSkin extends Skin {
      * @private
      */
     static _getBitmapSize(bitmapData) {
-        if (bitmapData instanceof Image) {
-            return [
-                bitmapData.naturalWidth || bitmapData.width,
-                bitmapData.naturalHeight || bitmapData.height,
-            ];
-        }
-
-        // ImageData or import('canvas').Canvas
+        // ImageData or Canvas
         return [bitmapData.width, bitmapData.height];
     }
 }

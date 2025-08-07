@@ -19,7 +19,8 @@ class MainGame {
         cursor: 'cursor', 
         entities: 'entities', 
         debuggers: 'debuggers',
-        settings: 'settings'
+        settings: 'settings',
+        tooltip: 'tooltip'
     };
 
     assets = new Assets(path.resolve(hostDir, 'assets'));
@@ -78,7 +79,9 @@ class MainGame {
         });
     }
     _initDebugTiles() {
-        this.debugTiles = new DebuggerTiles(this.window.width, this.window.height, this.render, this.stats);
+        this.debugTiles = new DebuggerTiles(this.window.width, this.window.height, MainGame.layers.debuggers, this.render, window, this.stats);
+        this.debugTiles.direction = 'right';
+        this.debugTiles.resetPositions();
         this.debugTiles.createTile(function(ctx, { dt, dts, maxDts, idealFps }) {
             ctx.antialias = 'default';
             ctx.textBaseline = 'alphabetic';
@@ -197,7 +200,7 @@ class MainGame {
             ctx.fillText(idealTxt, x,y);
             x += ctx.measureText(idealTxt).width;
             x += 5;
-        }, 256, 256);
+        }, 256, 256, 'Speed statistics, like FPS and Delta Time');
         const game = this;
         this.debugTiles.createTile(function(ctx) {
             ctx.antialias = 'default';
@@ -229,14 +232,16 @@ class MainGame {
             const tilesText = `Tiles: ${game.tiles.wh[0] * game.tiles.wh[1]} [${game.tiles.wh.join(', ')}]`;
             ctx.strokeText(tilesText, 0,y += 17);
             ctx.fillText(tilesText, 0,y);
-        }, 256, 128);
+        }, 256, 128, 'Info on the tile render');
     }
     _initTileSpace() {
         this.cursor.draw = this.render.createDrawable(MainGame.layers.cursor);
         this.render.updateDrawableVisible(this.cursor.draw, false);
         this.tiles = new TileSpace(this.window, this.render, 20,20, 400,100, true);
+        this.tiles.loadAssets(this.assets);
         this.entities = new Physics(this.tiles, this.render);
-        this.player = this.entities.createEntity(180,180, 0);
+        this.entities.loadAssets(this.assets);
+        this.player = this.entities.createEntity(180,180, 'player');
         fs.readFile('./save.json', 'utf8', (err, data) => {
             if (err) return;
             if (data.length < 2) return;
@@ -244,7 +249,7 @@ class MainGame {
         });
     }
     _initKeys() {
-        keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.render), 'Opens the settings and exit menu'];
+        keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.render, window), 'Opens the settings and exit menu'];
         keys['Camera Left']           = [[names.A],         false, () => this.camOff[0] -= 200 * this.stats.dt, 'Moves the debug/painting camera left'];
         keys['Camera Right']          = [[names.D],         false, () => this.camOff[0] += 200 * this.stats.dt, 'Moves the debug/painting camera right'];
         keys['Camera Up']             = [[names.W],         false, () => this.camOff[1] += 200 * this.stats.dt, 'Moves the debug/painting camera up'];
@@ -303,10 +308,10 @@ class MainGame {
             this.assets.registerAsset('six-bombs', 'tiles/6-bombs.png'),
             this.assets.registerAsset('seven-bombs', 'tiles/7-bombs.png'),
             this.assets.registerAsset('eight-bombs', 'tiles/8-bombs.png'),
-            this.assets.registerAsset('bomb', 'tiles/bomb.png')
+            this.assets.registerAsset('bomb', 'tiles/bomb.png'),
+
+            this.assets.registerAsset('pang', 'entities/penguin.svg')
         ]);
-        this.tiles.loadAssets(this.assets);
-        this.entities.loadAssets(this.assets);
     }
     start() {
         setInterval(() => {
@@ -335,10 +340,18 @@ class MainGame {
         this.movingPlayer = false;
         this.tiles.draw();
         this.entities.draw();
+        if (this.settings)
+            this.settings.draw();
 
         // draw frame
         this.render.draw();
-        handleKeys(this.window);
+        if (!this.settings)
+            handleKeys(this.window);
+        if (this.window.getMouseButton(0)) {
+            if (this.settings)
+                this.settings.fireClicks();
+            this.debugTiles.fireClicks();
+        }
 
         this.stats.dt = (Date.now() - this.stats.start) / 1000;
         this.stats.dts.push(this.stats.dt);
