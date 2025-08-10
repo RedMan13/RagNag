@@ -16,6 +16,7 @@ class DebuggerTile {
     x = 0;
     /** @type {number} */
     y = 0;
+    absolute = false;
     /** @type {import('./renderer/src/RenderWebGL')} */
     render = null;
     /** @type {object} */
@@ -40,15 +41,19 @@ class DebuggerTile {
         this.data = data;
     }
     get width() { return this.canvas.width; }
+    set width(value) { this.canvas.width = value; }
     get height() { return this.canvas.height; }
+    set height(value) { this.canvas.height = value; }
     /**
      * Render the contents of this drawable tile
      */
     renderContent() {
-        this.render.updateDrawablePosition(this.draw, [this.x,this.y]);
+        this.render.updateDrawablePosition(this.draw, [Math.floor(this.x),Math.floor(this.y)]);
         const isOld = this.filler(this.ctx, this.data);
         // filler says they didnt do anything, so dont update image contents
         if (isOld) return;
+        /*
+        this.ctx.resetTransform();
         this.ctx.lineWidth = 2;
         this.ctx.lineJoin = 'miter';
         this.ctx.strokeStyle = 'red';
@@ -59,7 +64,10 @@ class DebuggerTile {
         this.ctx.lineTo(0, this.canvas.height);
         this.ctx.closePath();
         this.ctx.stroke();
+        */
         const { data } = this.ctx.getImageData(0,0, this.canvas.width, this.canvas.height);
+        for (let i = 0; i < data.length; i++)
+            data[i] = data[i] * (data[(Math.floor(i / 4) * 4) + 3] / 255);
         const image = Image.fromPixels(this.canvas.width, this.canvas.height, 32, Buffer.from(data));
         this.render.updateBitmapSkin(this.skin, image, 1, [0,0]);
     }
@@ -138,18 +146,21 @@ class DebuggerTiles {
         this.scroll.skin = this.render.createBitmapSkin(this.scroll.canvas, 1, [5,this.scroll.canvas.height / 2]);
         this.render.updateDrawableSkinId(this.scroll.draw, this.scroll.skin);
     }
-    createTile(func, onclick, w,h, tooltip) {
+    createTile(func, onclick, w,h, tooltip, x,y) {
         if (typeof onclick !== 'function') {
+            y = x;
+            x = tooltip;
             tooltip = h;
             h = w;
             w = onclick;
             onclick = null;
         }
-        const pos = this.makePosition(w,h);
+        const pos = typeof x === 'number' ? [x,y] : this.makePosition(w,h);
         const tile = new DebuggerTile(this.render, this.layer, this.data, func, w,h, pos[0],pos[1]);
         tile.renderContent();
         tile.tooltip = tooltip || '';
         tile.onclick = onclick;
+        tile.absolute = typeof x === 'number';
         this.tiles.push(tile);
         if (this.alignmentColumn === 'center' || this.alignmentRow === 'center')
             this.resetPositions();
@@ -158,9 +169,10 @@ class DebuggerTiles {
         switch (this.alignmentColumn) {
         case 'start': return -this.width / 2;
         case 'center':
-            const right = this.tiles.reduce((c,v) => Math.max(c, v.x + v.width), -Infinity);
-            const left = this.tiles.reduce((c,v) => Math.min(c, v.x), Infinity);
+            const right = this.tiles.reduce((c,v) => v.absolute ? c : Math.max(c, v.x + v.width), -Infinity);
+            const left = this.tiles.reduce((c,v) => v.absolute ? c : Math.min(c, v.x), Infinity);
             const width = right - left;
+            if (!isFinite(width)) return 0;
             return -width / 2;
         case 'end': return this.width / 2;
         }
@@ -169,9 +181,10 @@ class DebuggerTiles {
         switch (this.alignmentRow) {
         case 'start': return this.height / 2;
         case 'center':
-            const top = this.tiles.reduce((c,v) => Math.max(c, v.y), -Infinity);
-            const bottom = this.tiles.reduce((c,v) => Math.min(c, v.y - v.height), Infinity);
+            const top = this.tiles.reduce((c,v) => v.absolute ? c : Math.min(c, v.y), Infinity);
+            const bottom = this.tiles.reduce((c,v) => v.absolute ? c : Math.max(c, v.y - v.height), -Infinity);
             const height = top - bottom;
+            if (!isFinite(height)) return 0;
             return height / 2;
         case 'end': return -this.height / 2;
         }
@@ -182,6 +195,7 @@ class DebuggerTiles {
         this.cursor[1] = this.rootRow;
         // redo positions
         for (const tile of this.tiles) {
+            if (tile.absolute) continue;
             const pos = this.makePosition(tile.width, tile.height);
             tile.x = pos[0];
             tile.y = pos[1];
@@ -191,7 +205,7 @@ class DebuggerTiles {
         switch (this.direction) {
         case 'down': {
             this.maxWidth = Math.max(this.maxWidth, w);
-            if ((this.cursor[1] - h) <= (-this.height / 2) && !this.scrolls) {
+            if ((this.cursor[1] - h) < (-this.height / 2) && !this.scrolls) {
                 this.cursor[0] += this.maxWidth;
                 this.cursor[1] = this.rootRow;
             }
@@ -202,7 +216,7 @@ class DebuggerTiles {
         case 'up': {
             this.maxWidth = Math.max(this.maxWidth, w);
             this.cursor[1] += h;
-            if (this.cursor[1] >= (this.height / 2) && !this.scrolls) {
+            if (this.cursor[1] > (this.height / 2) && !this.scrolls) {
                 this.cursor[0] += this.maxWidth;
                 this.cursor[1] = this.rootRow;
             }
@@ -211,7 +225,7 @@ class DebuggerTiles {
         }
         case 'right': {
             this.maxWidth = Math.max(this.maxWidth, h);
-            if ((this.cursor[0] + w) >= (this.width / 2) && !this.scrolls) {
+            if ((this.cursor[0] + w) > (this.width / 2) && !this.scrolls) {
                 this.cursor[1] -= this.maxWidth;
                 this.cursor[0] = this.rootColumn;
             }
@@ -222,7 +236,7 @@ class DebuggerTiles {
         case 'left': {
             this.maxWidth = Math.max(this.maxWidth, h);
             this.cursor[0] -= w;
-            if (this.cursor[0] <= (-this.width / 2) && !this.scrolls) {
+            if (this.cursor[0] < (-this.width / 2) && !this.scrolls) {
                 this.cursor[1] -= this.maxWidth;
                 this.cursor[0] = this.rootColumn;
             }
@@ -311,7 +325,7 @@ class DebuggerTiles {
         const tile = this.tiles.find(tile => 
                 cursorX > tile.x && cursorX < (tile.x + tile.width) &&
                 cursorY < tile.y && cursorY > (tile.y - tile.height));
-        tile?.onclick?.(cursorX - tile.x, cursorY - tile.y);
+        tile?.onclick?.call?.(tile, cursorX - tile.x, -(cursorY - tile.y));
     }
 }
 module.exports = { DebuggerTile, DebuggerTiles };

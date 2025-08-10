@@ -261,11 +261,11 @@ class MainGame {
                 return this.entities.nudgeEntity(this.player, 0,20);
             if (!this.entities.entities[this.player]?.collided) return;
             switch (this.entities.entities[this.player]?.collided) {
-            case 1:
-                this.entities.nudgeEntity(this.player, 7.5,7.5); break;
-            case 2:
-                this.entities.nudgeEntity(this.player, -7.5,7.5); break;
-            case 3:
+            case 'left':
+                this.entities.nudgeEntity(this.player, 200,7.5); break;
+            case 'right':
+                this.entities.nudgeEntity(this.player, -200,7.5); break;
+            case 'down':
                 this.entities.nudgeEntity(this.player, 0,15); break;
             }
         }, 'Makes the player jump'];
@@ -274,8 +274,16 @@ class MainGame {
                 return this.entities.nudgeEntity(this.player, 0,-20);
             this.entities.nudgeEntity(this.player, 0,-1);
         }, 'Makes the player crouch down'];
-        keys['Move Left']             = [[names.N],         false, () => this.entities.nudgeEntity(this.player, 20,0), 'Makes the player move left'];
-        keys['Move Right']            = [[names.Comma],     false, () => this.entities.nudgeEntity(this.player, -20,0), 'Makes the player move right'];
+        keys['Move Left']             = [[names.N],         false, () => {
+            this.entities.nudgeEntity(this.player, 5,0);
+            if (this.entities.entities[this.player]?.collided === 'down')
+                this.entities.nudgeEntity(this.player, 15,0);
+        }, 'Makes the player move left'];
+        keys['Move Right']            = [[names.Comma],     false, () => {
+            this.entities.nudgeEntity(this.player, -5,0);
+            if (this.entities.entities[this.player]?.collided === 'down')
+                this.entities.nudgeEntity(this.player, -15,0);
+        }, 'Makes the player move right'];
         keys['Place Tile']            = [[names.MouseLeft], false, () => {
             if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return;
             this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = [this.cursor.tile];
@@ -287,7 +295,7 @@ class MainGame {
             this.assets.registerAsset('sprite-vert', 'shaders/sprite.vert.glsl'),
             this.assets.registerAsset('sprite-frag', 'shaders/sprite.frag.glsl'),
             
-            this.assets.registerAsset('error', 'tiles/error.svg'),
+            this.assets.registerAsset('error', 'error.svg'),
             this.assets.registerAsset('top-left', 'tiles/top-left.svg'),
             this.assets.registerAsset('top', 'tiles/top.svg'),
             this.assets.registerAsset('top-right', 'tiles/top-right.svg'),
@@ -314,6 +322,8 @@ class MainGame {
         ]);
     }
     start() {
+        // for (let i = 0; i < 200; i++)
+        //     this.entities.createEntity(140,20, 'error');
         setInterval(() => {
             if (!this.settings)
                 this.entities.tick();
@@ -324,12 +334,13 @@ class MainGame {
         const screenPos = this.tiles.screenToWorld(this.window.cursorPos.x, this.window.cursorPos.y);
         this.cursor.pos = screenPos.clone()
             .add(this.tiles.camera.pos.clone().div(this.tiles.tileWh))
+            .sub(this.tiles.screenWh.clone().div(2))
             .clamp(1)
             .mod([this.tiles.wh[0], Infinity]);
         if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]])
             this.render.updateDrawableVisible(this.cursor.draw, false);
         else
-            this.tiles.updateTileDrawable(this.cursor.draw, screenPos.sub([this.window.w / 2, this.window.h / 2]), [this.cursor.tile]);
+            this.tiles.updateTileDrawable(this.cursor.draw, screenPos, [this.cursor.tile]);
         const target = this.entities.entities[this.player].pos.clone();
         const distance = target.clone().scale(-1,1).sub(this.tiles.camera.pos);
         if (!this.movingPlayer) {

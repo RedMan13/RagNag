@@ -11,13 +11,15 @@ class Entity {
     /** @type {Point} */
     pos = new Point(0,0);
     /** @type {Point} */
-    vel = new Point(0,0);
+    vel = new Point(0,10);
     /** @type {Point} */
     size = new Point(1,1);
     /** @type {number} */
     kind = null;
     /** @type {null|'left'|'right'|'down'|'up'} */
     collided = null;
+    /** @type {null|'left'|'right'|'down'|'up'} */
+    wasCollided = null;
     density = 1;
     gravity = false;
     constructor(id, render, kind, x,y) {
@@ -32,56 +34,20 @@ class Entity {
     }
     /** @param {TileSpace} tiles */
     step({ tiles, maxSpeed }, neighbors) { // 400 tiles a second at 20 vel
-        // remove NaN and Infinity, it doesnt help us at all
+        // remove NaN, Infinity and over-speed, it doesnt help us at all
         this.vel.max(-maxSpeed).min(maxSpeed);
-        this.pos.max(-maxSpeed).min(maxSpeed);
         this.vel[0] ||= 0;
         this.vel[1] ||= 0;
         this.pos[0] ||= 0;
         this.pos[1] ||= 0;
         // compute air drag and friction
         this.vel[0] /= 2;
-        this.vel[1] /= 2;
+        if (!this.gravity) this.vel[1] /= 2;
         if (this.collided) this.vel[0] /= 1.5;
         if (this.gravity) this.vel[1] -= 1;
         this.collided = null;
         const distance = this.vel.clone().div(tiles.tileWh).abs();
         const signs = [Math.sign(this.vel[0]), Math.sign(this.vel[1])];
-        while (distance[1] > 0) {
-            const tilePos = this.pos.clone().div(tiles.tileWh).clamp(1).mod(tiles.wh);
-            const tile = tiles.map[tilePos[0]]?.[Point.mod(tilePos[1] + signs[1], tiles.wh)];
-            if (tile?.[0] > 0) {
-                this.vel[1] = 0;
-                if (signs[1] === -1) {
-                    this.pos[1] = Math.floor(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
-                    this.collided = 'down';
-                } else {
-                    this.pos[1] = Math.ceil(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
-                    this.collided = 'up';
-                }
-                break;
-            }
-            this.pos[1] += Math.min(distance[1], 1) * tiles.tileWh[1] * signs[1];
-            distance[1] -= Math.min(distance[1], 1);
-        }
-        // walk forward one tile on each axis
-        while (distance[0] > 0) {
-            const tilePos = this.pos.clone().div(tiles.tileWh).clamp(1).mod(tiles.wh);
-            const tile = tiles.map[Point.mod(tilePos[0] + signs[0], tiles.wh[0])]?.[tilePos[1]];
-            if (tile?.[0] > 0) {
-                this.vel[0] = 0;
-                if (signs[0] === -1) {
-                    this.pos[0] = Math.ceil(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
-                    this.collided = 'left';
-                } else {
-                    this.pos[0] = Math.floor(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
-                    this.collided = 'right';
-                }
-                break;
-            }
-            this.pos[0] += Math.min(distance[0], 1) * tiles.tileWh[0] * signs[0];
-            distance[0] -= Math.min(distance[0], 1);
-        }
         const leo = -(this.size[0] / 2) * tiles.tileWh[0];
         const reo = (this.size[0] / 2) * tiles.tileWh[0];
         const teo = (this.size[1] / 2) * tiles.tileWh[1];
@@ -90,27 +56,80 @@ class Entity {
         const rem = this.pos[0] + reo;
         const tem = this.pos[1] + teo;
         const bem = this.pos[1] + beo;
+        const leor = -Math.ceil(this.size[0] / 2);
+        const reor = Math.ceil(this.size[0] / 2);
+        const teor = Math.ceil(this.size[1] / 2);
+        const beor = -Math.ceil(this.size[1] / 2);
+        while (distance[1] > 0) {
+            for (let i = leor; i <= reor; i++) {
+                const tilePos = this.pos.clone()
+                    .add([0, (this.size[1] / 2) * signs[1]])
+                    .div(tiles.tileWh)
+                    .clamp(1);
+                const tile = tiles.map[Point.mod(tilePos[0] + i, tiles.wh[0])]?.[tilePos[1] + signs[1]];
+                if (tile?.[0] !== 0) {
+                    this.vel[1] = 0;
+                    if (signs[1] === -1) {
+                        this.pos[1] = Math.floor(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
+                        this.collided = 'down';
+                    } else {
+                        this.pos[1] = Math.ceil(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
+                        this.collided = 'up';
+                    }
+                    break;
+                }
+            }
+            this.pos[1] += Math.min(distance[1], 1) * tiles.tileWh[1] * signs[1];
+            distance[1] -= Math.min(distance[1], 1);
+        }
+        // walk forward one tile on each axis
+        while (distance[0] > 0) {
+            for (let i = beor; i <= teor; i++) {
+                const tilePos = this.pos.clone()
+                    .add([(this.size[0] / 2) * signs[0], 0])
+                    .div(tiles.tileWh)
+                    .clamp(1);
+                const tile = tiles.map[Point.mod(tilePos[0] + signs[0], tiles.wh[0])]?.[tilePos[1] + i];
+                if (tile?.[0] !== 0) {
+                    this.vel[0] = 0;
+                    if (signs[0] === -1) {
+                        this.pos[0] = Math.ceil(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
+                        this.collided = 'left';
+                    } else {
+                        this.pos[0] = Math.floor(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
+                        this.collided = 'right';
+                    }
+                    break;
+                }
+            }
+            this.pos[0] += Math.min(distance[0], 1) * tiles.tileWh[0] * signs[0];
+            distance[0] -= Math.min(distance[0], 1);
+        }
         neighbors.forEach(ent => {
             const le = ent.pos[0] - ((ent.size[0] / 2) * tiles.tileWh[0]);
             const re = ent.pos[0] + ((ent.size[0] / 2) * tiles.tileWh[0]);
             const te = ent.pos[1] + ((ent.size[1] / 2) * tiles.tileWh[1]);
             const be = ent.pos[1] - ((ent.size[1] / 2) * tiles.tileWh[1]);
-            if (lem < re && lem > le && (tem <= te || bem >= be)) {
-                this.collided = 'left';
-                this.pos[0] = re + leo;
+            if (lem < re && lem > le && (tem < te || bem > be)) {
+                const impulse = lem - le;
+                this.vel[0] += impulse / 2;
+                ent.vel[0] += -impulse / 2;
             }
-            if (rem < le && rem > re && (tem <= te || bem >= be)) {
-                this.collided = 'right';
-                this.pos[0] = le + reo;
+            if (rem > le && rem < re && (tem < te || bem > be)) {
+                const impulse = rem - re;
+                this.vel[0] += impulse / 2;
+                ent.vel[0] += -impulse / 2;
             }
-            if (bem < te && bem > be && (lem >= le || rem <= re)) {
+            /*
+            if (bem < te && bem > be && (lem > le || rem < re)) {
                 this.collided = 'down';
-                this.pos[1] = te + beo;
+                this.vel[1] = tem - te;
             }
-            if (tem < be && tem > te && (lem >= le || rem <= re)) {
+            if (tem < be && tem > te && (lem > le || rem < re)) {
                 this.collided = 'up';
-                this.pos[1] = be + teo;
+                this.vel[1] = bem - be;
             }
+            */
         });
     }
     getCorners(tiles) {
@@ -136,6 +155,9 @@ class Entity {
 }
 class Physics {
     static entityDatas = {
+        error: {
+            dimensions: [1,1]
+        },
         player: {
             dimensions: [1,1.794449792]
         }
@@ -157,6 +179,7 @@ class Physics {
         this.tiles = tiles;
     }
     loadAssets(assets) {
+        Physics.entityDatas.error.skin = this.render.createSVGSkin(assets.get('error'));
         Physics.entityDatas.player.skin = this.render.createSVGSkin(assets.get('pang'));
     }
     createEntity(x,y, kind) {

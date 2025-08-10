@@ -81,14 +81,14 @@ class TileSpace {
                         const right = x === (this.wh[0] -1);
                         const top = y === 0
                         const bottom = y === (this.wh[1] -1);
-                        // if ( top &&                       left) return [TileSpace.tiles.topLeft];
-                        if ( top /* &&            !right && !left */) return [TileSpace.tiles.botom];
-                        // if ( top &&             right         ) return [TileSpace.tiles.topRight];
-                        // if (!top && !bottom &&  right         ) return [TileSpace.tiles.right];
-                        // if (         bottom &&  right         ) return [TileSpace.tiles.bottomRight];
-                        if (         bottom /* && !right && !left */) return [TileSpace.tiles.top];
-                        // if (         bottom &&            left) return [TileSpace.tiles.bottomLeft];
-                        // if (!top && !bottom &&            left) return [TileSpace.tiles.left];
+                        if ( top &&                       left) return [TileSpace.tiles.topLeft];
+                        if ( top &&            !right && !left) return [TileSpace.tiles.top];
+                        if ( top &&             right         ) return [TileSpace.tiles.topRight];
+                        if (!top && !bottom &&  right         ) return [TileSpace.tiles.right];
+                        if (         bottom &&  right         ) return [TileSpace.tiles.bottomRight];
+                        if (         bottom && !right && !left) return [TileSpace.tiles.bottom];
+                        if (         bottom &&            left) return [TileSpace.tiles.bottomLeft];
+                        if (!top && !bottom &&            left) return [TileSpace.tiles.left];
                         return [TileSpace.tiles.none];
                     })
             );
@@ -101,7 +101,8 @@ class TileSpace {
     resizeViewport(width, height) {
         while (this.drawables.length)
             this.render.destroyDrawable(this.drawables.pop(), TileSpace.drawableLayer);
-        this.screenWh = new Point(Math.max(width, height)).div(this.tileWh).add(3).clamp(1);
+        // needs to be perfectly square for rotation to work
+        this.screenWh = new Point(width, height).div(this.tileWh).add(3).clamp(1);
         this.drawables = new Array(this.screenWh[0] * this.screenWh[1]).fill(-1)
             .map(() => this.render.createDrawable(TileSpace.drawableLayer));
     }
@@ -142,7 +143,7 @@ class TileSpace {
         return point.clone()
             .mul(this.tileWh) // move coords to screen space
             .sub(this.screenWh.clone().div(2).mul(this.tileWh)) // align all of these tiles as if they are one solid drawable
-            .add(this.tileWh.clone().scale(1, -1)) // offset back by one tile to abscure the left and bottom edges
+            .add(this.tileWh.clone()) // offset back by one tile to abscure the left and top edges
             .sub(this.camera.pos.clone().mod(this.tileWh)) // offset by the camera, wrapping back around when necessary
             .rotate(this.camera.dir) // rotate by the camera rotation
             .scale(-1, 1)
@@ -166,7 +167,7 @@ class TileSpace {
             .div(this.tileWh)
             .scale(-1,-1)
             .add(this.screenWh)
-            .translate(-0.5, 1.5)
+            .translate(-0.5, -0.5)
             .clamp(1);
     }
     /**
