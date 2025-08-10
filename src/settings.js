@@ -139,10 +139,12 @@ class Settings {
         this.tiles.direction = 'down';
         this.tiles.alignmentColumn = 'center';
         this.tiles.alignmentRow = 'center';
+        let changed = true;
+        const ranges = [];
+        // i ***REALLY*** like the rainworld input map
         this.tiles.createTile(/** @param {import('canvas').CanvasRenderingContext2D} ctx */ function(ctx) {
-            if (this.done) return true;
-            this.done = true;
-
+            if (!changed) return true;
+            changed = false;
             ctx.resetTransform();
             ctx.clearRect(0,0, this.width, this.height);
             ctx.fillStyle = '#0000007F';
@@ -172,77 +174,31 @@ class Settings {
             }
             createRoundRect(-449.5,-117, 899,234, 8);
             ctx.stroke();
-        }, this.window.width, this.window.height);
-        let labelsUp = true;
-        let leftList = true;
-        let nameRowTopLeft = 0;
-        let nameRowTopRight = 0;
-        let nameRowBottomLeft = 0;
-        let nameRowBottomRight = 0;
-        const drawKey = (x,y, w,h, label, filled, name = 'no name') => {
-            x *= 38;
-            y *= 38;
-            x += -443.5;
-            y += -111;
-            w *= 38;
-            h *= 38;
-            w -= 6;
-            h -= 6;
-            const nameRow = labelsUp
-                ? leftList
-                    ? nameRowTopLeft++
-                    : nameRowTopRight++
-                : leftList
-                    ? nameRowBottomLeft++
-                    : nameRowBottomRight++;
-            const height = Math.abs(labelsUp 
-                ? (((-117 - y) + y) - 4) - (nameRow * 11)
-                : (117 - (y + h)) + (y + h) + 4 + (nameRow * 11));
-            if (labelsUp) y -= height;
-            const isUp = labelsUp;
-            this.tiles.createTile(function(ctx) {
-                if (this.done) return true;
-                this.done = true;
-                this.y = -y;
-                ctx.resetTransform();
-                ctx.clearRect(0,0, this.width, this.height);
-                ctx.scale(1, -1);
-                ctx.translate(0, -this.height);
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 1;
-                ctx.textBaseline = 'middle';
-                const drawY = isUp ? this.height - h : 0;
-
-                function createRoundRect(x,y, w,h, rad) {
-                    x += 1;
-                    y += 1;
-                    w -= 2;
-                    h -= 2;
-                    const bottomLeft = [x,y];
-                    const bottomRight = [x + w, y];
-                    const topLeft = [x, y + h];
-                    const topRight = [x + w, y + h];
-                    const bottom = [x + (w / 2), y];
-                    const top = [x + (w / 2), y + h];
-                    const left = [x, y + (h / 2)];
-                    const right = [x + w, y + (h / 2)];
-                    ctx.beginPath();
-                    ctx.moveTo(...bottom);
-                    ctx.arcTo(...bottomLeft, ...left, rad);
-                    ctx.arcTo(...topLeft, ...top, rad);
-                    ctx.arcTo(...topRight, ...right, rad);
-                    ctx.arcTo(...bottomRight, ...bottom, rad);
-                    ctx.closePath();
-                }
+            let labelsUp = true;
+            let leftList = true;
+            let nameRowTopLeft = 0;
+            let nameRowTopRight = 0;
+            let nameRowBottomLeft = 0;
+            let nameRowBottomRight = 0;
+            function drawKey(x,y, w,h, label, filled, name = 'no name') {
+                x *= 38;
+                y *= 38;
+                x += -443.5;
+                y += -111;
+                w *= 38;
+                h *= 38;
+                w -= 6;
+                h -= 6;
+                ranges.push([x, y, x + w, y + h, label]);
                 ctx.lineWidth = 2;
                 ctx.fillStyle = 'black';
                 ctx.strokeStyle = 'white';
                 ctx.textAlign = 'left';
-                createRoundRect(0,drawY, w,h, 6);
+                createRoundRect(x,y, w,h, 6);
                 ctx.stroke();
                 ctx.fill();
                 if (filled) {
-                    createRoundRect(3,drawY +3, w -6,h -6, 4);
+                    createRoundRect(x +3,y +3, w -6,h -6, 4);
                     ctx.stroke();
                 }
                 if (filled) ctx.fillStyle = 'white';
@@ -250,10 +206,10 @@ class Settings {
                 const measures = ctx.measureText('`1234567890-=qwertyuiop[]\\asdfghjkl;\'zxcvbnm,./');
                 const lineHeight = measures.actualBoundingBoxAscent + measures.actualBoundingBoxDescent;
                 const height = (label.split('\n').length -1) * lineHeight;
-                let textY = drawY + ((h - height) / 2);
+                let textY = y + ((h - height) / 2);
                 for (const line of label.split('\n')) {
                     const measures = ctx.measureText(line);
-                    ctx.fillText(line, ((w - Math.min(measures.width, w -6)) / 2), textY, w - 6);
+                    ctx.fillText(line, x + ((w - Math.min(measures.width, w -6)) / 2), textY, w - 6);
                     textY += height;
                 }
                 if (filled) {
@@ -263,10 +219,10 @@ class Settings {
                     else ctx.textAlign = 'left';
                     ctx.beginPath();
                     let endPoint = [];
-                    if (isUp) {
-                        const nameY = nameRow * lineHeight;
-                        ctx.moveTo((w / 2), 0);
-                        endPoint = [(w / 2), (((-117 - drawY) + drawY) - 4) - nameY];
+                    if (labelsUp) {
+                        const nameY = (leftList ? nameRowTopLeft++ : nameRowTopRight++) * lineHeight;
+                        ctx.moveTo(x + (w / 2), y);
+                        endPoint = [x + (w / 2), (((-117 - y) + y) - 4) - nameY];
                         ctx.lineTo(...endPoint);
                         ctx.arcTo(endPoint[0], endPoint[1] - 4, endPoint[0] += leftList ? -4 : 4, endPoint[1] -= 4, 4);
                         ctx.translate(...endPoint);
@@ -275,9 +231,9 @@ class Settings {
                         ctx.rotate((0 / 180) * Math.PI);
                         ctx.translate(-endPoint[0], -endPoint[1]);
                     } else {
-                        const nameY = nameRow * lineHeight;
-                        ctx.moveTo((w / 2), h);
-                        endPoint = [(w / 2), (117 - (h + drawY)) + (h + drawY) + 4 + nameY];
+                        const nameY = (leftList ? nameRowBottomLeft++ : nameRowBottomRight++) * lineHeight;
+                        ctx.moveTo(x + (w / 2), y + h);
+                        endPoint = [x + (w / 2), (117 - (y + h)) + (y + h) + 4 + nameY];
                         ctx.lineTo(...endPoint);
                         ctx.arcTo(endPoint[0], endPoint[1] + 4, endPoint[0] += leftList ? -4 : 4, endPoint[1] += 4, 4);
                         ctx.translate(...endPoint);
@@ -288,61 +244,62 @@ class Settings {
                     }
                     ctx.stroke();
                 }
-            }, w,height, '', x,-y);
-        }
-        labelsUp = true;
-        for (let i = 0; i < keySwitches.length / 2; i++) {
-            const row = keySwitches[i];
-            nameRowTopLeft = row[0];
-            nameRowTopRight = row[1];
-            leftList = true;
-            for (let j = 0; j < row[2].length / 2; j++)
-                drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
-            leftList = false;
-            for (let j = row[2].length -1; j >= row[2].length / 2; j--)
-                drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
-        }
-        labelsUp = false;
-        for (let i = keySwitches.length -1; i >= keySwitches.length / 2; i--) {
-            const row = keySwitches[i];
-            nameRowBottomLeft = row[0];
-            nameRowBottomRight = row[1];
-            leftList = true;
-            for (let j = 0; j < row[2].length / 2; j++)
-                drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
-            leftList = false;
-            for (let j = row[2].length -1; j >= row[2].length / 2; j--)
-                drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
-        }
+            }
+            labelsUp = true;
+            for (let i = 0; i < keySwitches.length / 2; i++) {
+                const row = keySwitches[i];
+                nameRowTopLeft = row[0];
+                nameRowTopRight = row[1];
+                leftList = true;
+                for (let j = 0; j < row[2].length / 2; j++)
+                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+                leftList = false;
+                for (let j = row[2].length -1; j >= row[2].length / 2; j--)
+                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+            }
+            labelsUp = false;
+            for (let i = keySwitches.length -1; i >= keySwitches.length / 2; i--) {
+                const row = keySwitches[i];
+                nameRowBottomLeft = row[0];
+                nameRowBottomRight = row[1];
+                leftList = true;
+                for (let j = 0; j < row[2].length / 2; j++)
+                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+                leftList = false;
+                for (let j = row[2].length -1; j >= row[2].length / 2; j--)
+                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+            }
+        }, this.window.width, this.window.height);
         this.tiles.resetPositions();
+        changed = true;
     }
     draw() { this.tiles.renderTiles(); }
     fireClicks() { this.tiles.fireClicks(); }
