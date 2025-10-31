@@ -681,7 +681,7 @@ class RenderWebGL extends EventEmitter {
      * @param {number} [outlineThickness=1] - The thickness of the outline to be drawn
      * @param {Array<number>} [rotationCenter] - Optional rotation center for the elipse. If not supplied, it will be the center
      */
-    updateRectangleSkin (skinId, radius, fillColor = [1,1,1,1], rotationCenter, startAngle = 0, endAngle = 360, outlineColor = [0,0,0,0], outlineThickness = 1) {
+    updateRectangleSkin (skinId, size, fillColor = [1,1,1,1], outlineColor = [0,0,0,0], outlineThickness = 1, rotationCenter) {
         if (this._allSkins[skinId] instanceof RectangleSkin) {
             this._allSkins[skinId].configure(size, fillColor, outlineColor, outlineThickness, rotationCenter);
             return;
@@ -2308,7 +2308,7 @@ class RenderWebGL extends EventEmitter {
         const projection = twgl.m4.ortho(
             // TW: We have to convert the snapped "screen-space" back to "stage-space" for rendering.
             bounds.left / quality, bounds.right / quality,
-            bounds.top / quality, bounds.bottom / quality,
+            bounds.bottom / quality, bounds.top / quality,
             -1, 1
         );
 

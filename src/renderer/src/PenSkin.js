@@ -199,8 +199,8 @@ class PenSkin extends Skin {
 
         /* Reset framebuffer to transparent black */
         const gl = this._renderer.gl;
-        if (width && height)
-            gl.scissor(x, y, width, height);
+        if (width && height) 
+            gl.scissor(x + (gl.canvas.width / 2), -y + (gl.canvas.height / 2), width, height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         if (width && height)
