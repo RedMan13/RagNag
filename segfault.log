@@ -1,0 +1,171 @@
+
+
+At Tue Oct 28 15:59:13 2025
+
+
+PID 44454 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x7fa23cfee08f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7fa265442520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x7fa26425985d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x7fa2642382d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x7fa2657aae5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x7fa2657ac332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x7fa2657acb80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x7fa2657ad748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:00:00 2025
+
+
+PID 44563 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x71725c06908f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x717260442520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x71725d10d85d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x71725d0ec2d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x71725d3c5e5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x71725d3c7332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x71725d3c7b80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x71725d3c8748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:00:43 2025
+
+
+PID 44672 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x75ae1ec6d08f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x75ae57242520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x75ae1fe8c85d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x75ae1fe6b2d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x75ae541c5e5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x75ae541c7332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x75ae541c7b80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x75ae541c8748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:01:44 2025
+
+
+PID 44828 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x71686142908f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x716889842520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x71688868a85d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x7168886692d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x716889bcbe5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x716889bcd332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x716889bcdb80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x716889bce748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:02:50 2025
+
+
+PID 44950 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x7685dc13308f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7685dfc42520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x7685dca3185d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x7685dca102d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x7685dff4be5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x7685dff4d332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x7685dff4db80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x7685dff4e748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:03:05 2025
+
+
+PID 45106 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x78174f3d808f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x781787842520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x78178463185d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x7817846102d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x781787b4be5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x781787b4d332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x781787b4db80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x781787b4e748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:08:18 2025
+
+
+PID 45635 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x741ef805308f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x741efbc42520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x741ef890d85d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x741ef88ec2d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x741ef8bc5e5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x741ef8bc7332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x741ef8bc7b80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x741ef8bc8748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:08:34 2025
+
+
+PID 45761 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x7b148e9ee08f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7b14bee42520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x7b14bc45685d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x7b14bc4352d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x7b14bf1aae5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x7b14bf1ac332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x7b14bf1acb80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x7b14bf1ad748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]
+
+
+At Tue Oct 28 16:09:42 2025
+
+
+PID 45975 received SIGSEGV for address: 0x0
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/segfault-raub/bin-linux/segfault.node(+0x1708f)[0x7266b008808f]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7266b3a42520]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_type_check_instance_is_fundamentally_a+0xd)[0x7266b07dd85d]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/libgobject-2.0.so.0(g_object_unref+0x15)[0x7266b07bc2d5]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image17loadSVGFromBufferEPhj+0x9f)[0x7266b3d4be5f]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image14loadFromBufferEPhj+0xf2)[0x7266b3d4d332]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN5Image9SetSourceERKN4Napi12CallbackInfoE+0x4f0)[0x7266b3d4db80]
+/home/godslayerakp/Documents/git-repos/RedMan13/RagNag/node_modules/canvas/build/Release/canvas.node(_ZN4Napi7details12CallbackDataIPFvRKNS_12CallbackInfoEEvE7WrapperEP10napi_env__P20napi_callback_info__+0xa8)[0x7266b3d4e748]
+node[0xc5c525]
+node(_ZN2v88internal25FunctionCallbackArguments4CallENS0_15CallHandlerInfoE+0x12f)[0xf6e88f]
+node[0xf6f0fd]
+node(_ZN2v88internal21Builtin_HandleApiCallEiPmPNS0_7IsolateE+0x115)[0xf6f5c5]
+node[0x1979df6]

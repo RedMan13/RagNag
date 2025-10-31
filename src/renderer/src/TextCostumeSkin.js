@@ -271,6 +271,8 @@ class TextCostumeSkin extends Skin {
                 const textureOptions = {
                     auto: false,
                     wrap: gl.CLAMP_TO_EDGE,
+                    width: 0,
+                    height: 0
                 };
                 this._texture = twgl.createTexture(gl, textureOptions);
             }

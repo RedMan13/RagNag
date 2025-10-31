@@ -20,6 +20,18 @@ const float epsilon = 1e-3;
 uniform mat4 u_projectionMatrix;
 uniform mat4 u_modelMatrix;
 attribute vec2 a_texCoord;
+#if defined(ENABLE_repeatX)
+uniform float u_repeatX;
+#endif
+#if defined(ENABLE_repeatY)
+uniform float u_repeatY;
+#endif
+#ifdef ENABLE_horizontalShear
+uniform float u_horizontalShear;
+#endif
+#ifdef ENABLE_verticalShear
+uniform float u_verticalShear;
+#endif
 #endif
 
 attribute vec2 a_position;
@@ -76,7 +88,25 @@ void main() {
 	#elif defined(DRAW_MODE_background)
 	gl_Position = vec4(a_position * 2.0, 0, 1);
 	#else
-	gl_Position = u_projectionMatrix * u_modelMatrix * vec4(a_position, 0, 1);
+	float x = a_position.x;
+	float y = a_position.y;
+	#if defined(ENABLE_repeatX)
+	if (x < 0.0 && u_repeatX != 1.0)
+		x = 0.5 - u_repeatX;
+	#endif
+	#if defined(ENABLE_repeatY)
+	if (y < 0.0 && u_repeatY != 1.0)
+		y = 0.5 - u_repeatY;
+	#endif
+	#ifdef ENABLE_horizontalShear
+	if (y > 0.0)
+		x *= u_horizontalShear;
+	#endif
+	#ifdef ENABLE_verticalShear
+	if (x > 0.0)
+		y *= u_verticalShear;
+	#endif
 	v_texCoord = a_texCoord;
+	gl_Position = u_projectionMatrix * u_modelMatrix * vec4(x,y, 0, 1);
 	#endif
 }

@@ -179,9 +179,45 @@ ShaderManager.EFFECT_INFO = {
     tintColor: {
         uniformName: 'u_tintColor',
         mask: 1 << 12,
-        converter: x => x - 1,
+        converter: x => (x -1) | 0xFF000000,
         shapeChanges: false
-    }
+    },
+    repeatX: {
+        uniformName: 'u_repeatX',
+        mask: 1 << 13,
+        converter: x => x,
+        shapeChanges: true
+    },
+    repeatY: {
+        uniformName: 'u_repeatY',
+        mask: 1 << 14,
+        converter: x => x,
+        shapeChanges: true
+    },
+    tintWhites: {
+        uniformName: 'u_tintWhite',
+        mask: 1 << 15,
+        converter: x => ((x -1) >> 8) | (((x -1) & 0xFF) * 16777216),
+        shapeChanges: false
+    },
+    tintBlacks: {
+        uniformName: 'u_tintBlack',
+        mask: 1 << 16,
+        converter: x => ((x -1) >> 8) | (((x -1) & 0xFF) * 16777216),
+        shapeChanges: false
+    },
+    horizontalShear: {
+        uniformName: 'u_horizontalShear',
+        mask: 1 << 17,
+        converter: x => x,
+        shapeChanges: true
+    },
+    verticalShear: {
+        uniformName: 'u_verticalShear',
+        mask: 1 << 18,
+        converter: x => x,
+        shapeChanges: true
+    },
 };
 
 /**
@@ -224,7 +260,17 @@ ShaderManager.DRAW_MODE = {
     /**
      * Draw the background in a certain color. Must sometimes be used instead of gl.clear.
      */
-    background: 'background'
+    background: 'background',
+    
+    /**
+     * Instructs the shader to exclusively draw an elipse
+     */
+    elipse: 'elipse',
+    
+    /**
+     * Instructs the shader to exclusively draw an rectangle
+     */
+    rectangle: 'rectangle'
 };
 
 module.exports = ShaderManager;

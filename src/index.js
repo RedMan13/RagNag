@@ -1,5 +1,6 @@
 const { Assets } = require("./assets.js");
 const TileSpace = require('./tile-drawing.js');
+const TextLayer = require('./text-layer.js');
 const Physics = require('./physics.js');
 const { DebuggerTiles } = require('./debuggers.js');
 const WebGLRenderer = require('./renderer/src/index.js');
@@ -20,15 +21,25 @@ class MainGame {
         entities: 'entities', 
         debuggers: 'debuggers',
         settings: 'settings',
-        tooltip: 'tooltip'
+        tooltip: 'tooltip',
+        text: TextLayer.layer
     };
 
     assets = new Assets(path.resolve(hostDir, 'assets'));
     stats = {
-        start: Date.now(),
-        dt: 1,
-        dts: [],
-        maxDts: 100,
+        drawTime: {
+            start: Date.now(),
+            time: 1,
+            times: [],
+            changed: false
+        },
+        tickTime: {
+            start: Date.now(),
+            time: 1,
+            times: [],
+            changed: false
+        },
+        maxTimes: 100,
         idealFps: 60
     };
     /** @type {import('glfw-raub').Window} */
@@ -39,6 +50,8 @@ class MainGame {
     render = null;
     /** @type {TileSpace} */
     tiles = null;
+    /** @type {} */
+    text = null;
     /** @type {DebuggerTiles} */
     debugTiles = null;
     /** @type {Physics} */
@@ -55,6 +68,7 @@ class MainGame {
     camOff = new Point(0,0);
     /** @type {Settings} */
     settings = null;
+    stepping = false;
 
     constructor(window, canvas) {
         this.window = window;
@@ -63,7 +77,7 @@ class MainGame {
     }
     _initRenderer() {
         this.render = new WebGLRenderer(this.canvas, -this.window.width / 2, this.window.width / 2, this.window.height / 2, -this.window.height / 2);
-        this.render.renderOffscreen = false;
+        this.render.renderOffscreen = true;
         this.render.setBackgroundColor(0,0,0,0);
         this.render.setLayerGroupOrdering(Object.values(MainGame.layers));
 
@@ -74,31 +88,37 @@ class MainGame {
                 -this.window.height / 2,
                 this.window.height / 2
             );
+            if (!this.debugTiles) return;
             this.debugTiles.width = this.window.width;
             this.debugTiles.height = this.window.height;
+            this.tiles.resizeViewport(this.window.width, this.window.height);
+            this.text.resizeViewport(this.window.width, this.window.height);
         });
     }
     _initDebugTiles() {
-        this.debugTiles = new DebuggerTiles(this.window.width, this.window.height, MainGame.layers.debuggers, this.render, window, this.stats);
+        this.debugTiles = new DebuggerTiles(1, this.window.width, this.window.height, MainGame.layers.debuggers, this.render, window, this.stats);
         this.debugTiles.direction = 'right';
         this.debugTiles.resetPositions();
-        this.debugTiles.createTile(function(ctx, { dt, dts, maxDts, idealFps }) {
+        this.debugTiles.createTile(function(ctx, { drawTime: { time, times, changed }, maxTimes, idealFps }) {
+            if (!changed) return true;
+            this.data.changed = false;
             ctx.antialias = 'default';
             ctx.textBaseline = 'alphabetic';
             let y = 0;
             ctx.resetTransform();
-            ctx.clearRect(0,0, this.width, this.height);
-            ctx.scale(1, -1);
-            ctx.translate(0, -this.height);
-            const avg = dts.reduce((c,v) => c + v, 0) / dts.length;
+            ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
+            ctx.scale(1,-1);
+            ctx.translate(0, -this.canvas.height);
+            ctx.scale(this.subSampling, this.subSampling);
+            const avg = times.reduce((c,v) => c + v, 0) / times.length;
             ctx.fillStyle = 'white';
             ctx.strokeStyle = 'black';
             ctx.lineWidth = 1;
             ctx.font = '20px';
-            const dtTxt = `DT: ${dt} (${avg})`;
+            const dtTxt = `DT: ${time} (${avg})`;
             ctx.strokeText(dtTxt, 0,y += 17);
             ctx.fillText(dtTxt, 0,y);
-            const fpsTxt = `FPS: ${(1 / dt).toFixed(2)} (${Math.round(1 / avg)})`;
+            const fpsTxt = `FPS: ${(1 / time).toFixed(2)} (${Math.round(1 / avg)})`;
             ctx.strokeText(fpsTxt, 0,y += 17);
             ctx.fillText(fpsTxt, 0,y);
             const countTxt = `Count: ${this.render._allDrawables.length} (${this.render._allSkins.length})`;
@@ -114,13 +134,13 @@ class MainGame {
             const width = 256;
             ctx.fillRect(0, y, width, height);
             ctx.strokeRect(0, y, width, height);
-            const max = dts.reduce((c,v) => Math.max(c,1 / v), 0);
-            for (let i = 0, plot = dts[i]; i < dts.length; plot = dts[++i]) {
+            const max = times.reduce((c,v) => Math.max(c,1 / v), 0);
+            for (let i = 0, plot = times[i]; i < times.length; plot = times[++i]) {
                 const fps = 1 / plot;
                 const len = (fps / max) * height;
                 const rgb = hsvToRgb([(Math.min(fps / idealFps, 1) * 128) / 360, .5, 1], []);
                 ctx.fillStyle = `rgb(${rgb})`;
-                ctx.fillRect((i / maxDts) * width, (height - len) + y, width / maxDts, len);
+                ctx.fillRect((i / maxTimes) * width, (height - len) + y, width / maxTimes, len);
             }
             ctx.antialias = 'default';
             ctx.fillStyle = 'blue';
@@ -200,16 +220,138 @@ class MainGame {
             ctx.fillText(idealTxt, x,y);
             x += ctx.measureText(idealTxt).width;
             x += 5;
-        }, 256, 256, 'Speed statistics, like FPS and Delta Time');
+        }, 256, 256, 'Speed statistics for frame drawing');
+        this.debugTiles.createTile(function(ctx, { tickTime: { time, times, changed }, maxTimes, idealFps }) {
+            return true;
+            if (!changed) return true;
+            this.data.changed = false;
+            ctx.antialias = 'default';
+            ctx.textBaseline = 'alphabetic';
+            let y = 0;
+            ctx.resetTransform();
+            ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
+            ctx.scale(this.subSampling, this.subSampling);
+            const avg = times.reduce((c,v) => c + v, 0) / times.length;
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.font = '20px';
+            const dtTxt = `DT: ${time} (${avg})`;
+            ctx.strokeText(dtTxt, 0,y += 17);
+            ctx.fillText(dtTxt, 0,y);
+            const fpsTxt = `FPS: ${(1 / time).toFixed(2)} (${Math.round(1 / avg)})`;
+            ctx.strokeText(fpsTxt, 0,y += 17);
+            ctx.fillText(fpsTxt, 0,y);
+            const countTxt = `Count: ${this.render._allDrawables.length} (${this.render._allSkins.length})`;
+            ctx.strokeText(countTxt, 0,y += 17);
+            ctx.fillText(countTxt, 0,y);
+            ctx.fillStyle = '#222';
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 1;
+
+            ctx.antialias = 'none';
+            y += 5
+            const height = 128;
+            const width = 256;
+            ctx.fillRect(0, y, width, height);
+            ctx.strokeRect(0, y, width, height);
+            const max = times.reduce((c,v) => Math.max(c,1 / v), 0);
+            for (let i = 0, plot = times[i]; i < times.length; plot = times[++i]) {
+                const fps = 1 / plot;
+                const len = (fps / max) * height;
+                const rgb = hsvToRgb([(Math.min(fps / idealFps, 1) * 128) / 360, .5, 1], []);
+                ctx.fillStyle = `rgb(${rgb})`;
+                ctx.fillRect((i / maxTimes) * width, (height - len) + y, width / maxTimes, len);
+            }
+            ctx.antialias = 'default';
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(0, (height - (((1 / avg) / max) * height)) + y, width, 1.5);
+            ctx.fillStyle = 'cyan';
+            const targetY = (height - ((idealFps / max) * height)) + y;
+            if (targetY > y) ctx.fillRect(0, targetY, width, 1.5);
+            y += height;
+
+            let x = 5;
+            y += 5;
+            ctx.strokeStyle = 'rgba(0,0,0, 30%)';
+            ctx.fillStyle = `rgb(${hsvToRgb([128 / 360, .5, 1], [])})`;
+            ctx.lineWidth = 4;
+            ctx.fillRect(x, y, 30, 15);
+            ctx.strokeRect(x, y, 30, 15);
+            x += 30;
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.font = '15px';
+            const bestTxt = ' - Best';
+            ctx.strokeText(bestTxt, x,y);
+            ctx.fillText(bestTxt, x,y);
+            x += ctx.measureText(bestTxt).width;
+            x += 5;
+
+            ctx.strokeStyle = 'rgba(0,0,0, 30%)';
+            ctx.fillStyle = `rgb(${hsvToRgb([0, .5, 1], [])})`;
+            ctx.lineWidth = 4;
+            ctx.fillRect(x, y, 30, 15);
+            ctx.strokeRect(x, y, 30, 15);
+            x += 30;
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.font = '15px';
+            const worstTxt = ' - Worst';
+            ctx.strokeText(worstTxt, x,y);
+            ctx.fillText(worstTxt, x,y);
+            x += ctx.measureText(worstTxt).width;
+            x = 5;
+            y += 20;
+
+            ctx.strokeStyle = 'rgba(0,0,0, 30%)';
+            ctx.fillStyle = `blue`;
+            ctx.lineWidth = 4;
+            ctx.fillRect(x, y, 30, 15);
+            ctx.strokeRect(x, y, 30, 15);
+            x += 30;
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.font = '15px';
+            const avgTxt = ' - Avg';
+            ctx.strokeText(avgTxt, x,y);
+            ctx.fillText(avgTxt, x,y);
+            x += ctx.measureText(avgTxt).width;
+            x += 5;
+
+            ctx.strokeStyle = 'rgba(0,0,0, 30%)';
+            ctx.fillStyle = `cyan`;
+            ctx.lineWidth = 4;
+            ctx.fillRect(x, y, 30, 15);
+            ctx.strokeRect(x, y, 30, 15);
+            x += 30;
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.font = '15px';
+            const idealTxt = ' - Ideal';
+            ctx.strokeText(idealTxt, x,y);
+            ctx.fillText(idealTxt, x,y);
+            x += ctx.measureText(idealTxt).width;
+            x += 5;
+        }, 256, 256, 'Speed statistics for the physics engine');
         const game = this;
         this.debugTiles.createTile(function(ctx) {
             ctx.antialias = 'default';
             ctx.textBaseline = 'alphabetic';
             let y = 0;
             ctx.resetTransform();
-            ctx.clearRect(0,0, this.width, this.height);
-            ctx.scale(1, -1);
-            ctx.translate(0, -this.height);
+            ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
+            ctx.scale(1,-1);
+            ctx.translate(0, -this.canvas.height);
+            ctx.scale(this.subSampling, this.subSampling);
             ctx.fillStyle = 'white';
             ctx.strokeStyle = 'black';
             ctx.lineWidth = 1;
@@ -237,8 +379,10 @@ class MainGame {
     _initTileSpace() {
         this.cursor.draw = this.render.createDrawable(MainGame.layers.cursor);
         this.render.updateDrawableVisible(this.cursor.draw, false);
-        this.tiles = new TileSpace(this.window, this.render, 20,20, 400,100, true);
+        this.tiles = new TileSpace(this.window, this.render, 20,20, 600,200, true);
         this.tiles.loadAssets(this.assets);
+        this.text = new TextLayer(this.window, this.render, 6,6, 200, 200, true);
+        this.text.loadAssets(this.assets);
         this.entities = new Physics(this.tiles, this.render);
         this.entities.loadAssets(this.assets);
         this.player = this.entities.createEntity(180,180, 'player');
@@ -249,22 +393,27 @@ class MainGame {
         });
     }
     _initKeys() {
+        let jumped = false;
         keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.render, window), 'Opens the settings and exit menu'];
-        keys['Camera Left']           = [[names.A],         false, () => this.camOff[0] -= 200 * this.stats.dt, 'Moves the debug/painting camera left'];
-        keys['Camera Right']          = [[names.D],         false, () => this.camOff[0] += 200 * this.stats.dt, 'Moves the debug/painting camera right'];
-        keys['Camera Up']             = [[names.W],         false, () => this.camOff[1] += 200 * this.stats.dt, 'Moves the debug/painting camera up'];
-        keys['Camera Down']           = [[names.S],         false, () => this.camOff[1] -= 200 * this.stats.dt, 'Moves the debug/painting camera down'];
-        keys['Player Go To']          = [[names.E],         false, () => { this.movingPlayer = true; this.entities.moveEntity(this.player, (this.cursor.pos[0] * this.tiles.tileWh[0]) - (this.window.width / 2), (this.cursor.pos[1] * this.tiles.tileWh[1]) - (this.window.height / 2)) }]
+        keys['Camera Left']           = [[names.A],         false, () => this.camOff[0] -= 200 * this.stats.drawTime.time, 'Moves the debug/painting camera left'];
+        keys['Camera Right']          = [[names.D],         false, () => this.camOff[0] += 200 * this.stats.drawTime.time, 'Moves the debug/painting camera right'];
+        keys['Camera Up']             = [[names.W],         false, () => this.camOff[1] += 200 * this.stats.drawTime.time, 'Moves the debug/painting camera up'];
+        keys['Camera Down']           = [[names.S],         false, () => this.camOff[1] -= 200 * this.stats.drawTime.time, 'Moves the debug/painting camera down'];
+        keys['Player Go To']          = [[names.E],         false, () => {
+            this.movingPlayer = true;
+            this.entities.moveEntity(this.player, this.tiles.screenWh[0] - (this.cursor.pos[0] * this.tiles.tileWh[0]), (this.cursor.pos[1] * this.tiles.tileWh[1]));
+            this.entities.entities[this.player].vel = new Point(0,0);
+        }]
         keys['Clear Camera Position'] = [[names.Q],         false, () => this.camOff.set(0,0), 'Resets the offset curently given to the camera'];
         keys['Jump']                  = [[names.M],         false, () => {
-            if (!this.entities.entities[this.player].gravity)
+            if (!this.entities.entities[this.player]?.gravity)
                 return this.entities.nudgeEntity(this.player, 0,20);
             if (!this.entities.entities[this.player]?.collided) return;
             switch (this.entities.entities[this.player]?.collided) {
             case 'left':
-                this.entities.nudgeEntity(this.player, 200,7.5); break;
+                this.entities.nudgeEntity(this.player, 15,7.5); break;
             case 'right':
-                this.entities.nudgeEntity(this.player, -200,7.5); break;
+                this.entities.nudgeEntity(this.player, -15,7.5); break;
             case 'down':
                 this.entities.nudgeEntity(this.player, 0,15); break;
             }
@@ -289,6 +438,10 @@ class MainGame {
             this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = [this.cursor.tile];
         }, 'Sets the type of the currently hovered tile to the selected type'];
         keys['Save Map']              = [[names.ControlLeft, names.S], false, () => fs.writeFile('./save.json', JSON.stringify(this.tiles.map), err => { if (err) throw err; }), 'Saves the current map data into save.json'];
+        keys['Step Physics']          = [[names.Z],         true, () => {
+            this.stepping = true;
+            this.drawPhysics();
+        }];
     }
     async loadAssets() {
         await Promise.all([
@@ -317,6 +470,8 @@ class MainGame {
             this.assets.registerAsset('seven-bombs', 'tiles/7-bombs.png'),
             this.assets.registerAsset('eight-bombs', 'tiles/8-bombs.png'),
             this.assets.registerAsset('bomb', 'tiles/bomb.png'),
+            ...(new Array(256).fill(0)
+                .map((_,i) => this.assets.registerAsset(`char-${i}`, `tiles/text/tile${i.toString().padStart(3, '0')}.png`))),
 
             this.assets.registerAsset('pang', 'entities/penguin.svg')
         ]);
@@ -325,12 +480,26 @@ class MainGame {
         // for (let i = 0; i < 200; i++)
         //     this.entities.createEntity(140,20, 'error');
         setInterval(() => {
-            if (!this.settings)
-                this.entities.tick();
-        }, 1/20);
+            if (this.stepping) return;
+            this.drawPhysics();
+        }, 1000/60);
         this.window.loop(this.drawFrame.bind(this));
     }
+    drawPhysics() {
+        if (!this.settings)
+            this.entities.tick();
+        this.stats.tickTime.time = (Date.now() - this.stats.tickTime.start) / 1000;
+        this.stats.tickTime.times.push(this.stats.tickTime.time);
+        if (this.stats.tickTime.times.length > this.stats.maxTimes)
+            this.stats.tickTime.times.shift();
+        this.stats.tickTime.start = Date.now();
+        this.stats.tickTime.changed = true;
+    }
     drawFrame() {
+        if (this.stepping && !this.tiles.debug.enabled) {
+            this.tiles.enableDebug();
+            this.entities.enableDebug();
+        }
         const screenPos = this.tiles.screenToWorld(this.window.cursorPos.x, this.window.cursorPos.y);
         this.cursor.pos = screenPos.clone()
             .add(this.tiles.camera.pos.clone().div(this.tiles.tileWh))
@@ -342,15 +511,19 @@ class MainGame {
         else
             this.tiles.updateTileDrawable(this.cursor.draw, screenPos, [this.cursor.tile]);
         const target = this.entities.entities[this.player].pos.clone();
+        this.render.setBackgroundColor(Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.384313725, 0.384313725), Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.670588235, 0.670588235), ((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.858823529, 1);
         const distance = target.clone().scale(-1,1).sub(this.tiles.camera.pos);
-        if (!this.movingPlayer) {
+        if (!this.movingPlayer && !this.stepping) {
             this.tiles.camera.pos = this.camOff.clone()
                 .add(this.tiles.camera.pos)
                 .add(distance.mul(0.20));
-        }
+        } else this.tiles.camera.pos = this.camOff.clone();
         this.movingPlayer = false;
         this.tiles.draw();
         this.entities.draw();
+        
+        this.text.cursor.set(this.window.cursorPos.x, this.window.cursorPos.y).div(6);
+        this.text.text('abcdefg hello world! this is a test the quick brown fox jumps over the lazy dog');
         if (this.settings)
             this.settings.draw();
 
@@ -364,11 +537,12 @@ class MainGame {
             this.debugTiles.fireClicks();
         }
 
-        this.stats.dt = (Date.now() - this.stats.start) / 1000;
-        this.stats.dts.push(this.stats.dt);
-        if (this.stats.dts.length > this.stats.maxDts)
-            this.stats.dts.shift();
-        this.stats.start = Date.now();
+        this.stats.drawTime.time = (Date.now() - this.stats.drawTime.start) / 1000;
+        this.stats.drawTime.times.push(this.stats.drawTime.time);
+        if (this.stats.drawTime.times.length > this.stats.maxTimes)
+            this.stats.drawTime.times.shift();
+        this.stats.drawTime.start = Date.now();
+        this.stats.drawTime.changed = true;
         this.debugTiles.renderTiles();
     }
 }

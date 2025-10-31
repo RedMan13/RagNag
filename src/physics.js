@@ -1,11 +1,11 @@
 const TileSpace = require('./tile-drawing');
 const Point = require('./point');
+const { createCanvas } = require('canvas');
 
 class Entity {
     /** @type {import('./renderer/src/RenderWebGL')} */
     render = null;
     draw = -1;
-    skin = 2;
     /** @type {number} */
     id = null;
     /** @type {Point} */
@@ -21,14 +21,13 @@ class Entity {
     /** @type {null|'left'|'right'|'down'|'up'} */
     wasCollided = null;
     density = 1;
-    gravity = false;
+    gravity = true;
     constructor(id, render, kind, x,y) {
         this.id = id;
         this.render = render;
         this.kind = kind;
         this.pos.set(x,y);
         this.draw = render.createDrawable('entities');
-        this.skin = Physics.entityDatas[kind].skin;
         this.size[0] = Physics.entityDatas[kind].dimensions[0];
         this.size[1] = Physics.entityDatas[kind].dimensions[1];
     }
@@ -41,12 +40,12 @@ class Entity {
         this.pos[0] ||= 0;
         this.pos[1] ||= 0;
         // compute air drag and friction
-        this.vel[0] /= 2;
-        if (!this.gravity) this.vel[1] /= 2;
-        if (this.collided) this.vel[0] /= 1.5;
+        this.vel[0] /= 1.25;
+        if (!this.gravity) this.vel.div(2);
+        if (this.collided) this.vel[0] /= 2;
         if (this.gravity) this.vel[1] -= 1;
         this.collided = null;
-        const distance = this.vel.clone().div(tiles.tileWh).abs();
+        const distance = this.vel.clone().abs();
         const signs = [Math.sign(this.vel[0]), Math.sign(this.vel[1])];
         const leo = -(this.size[0] / 2) * tiles.tileWh[0];
         const reo = (this.size[0] / 2) * tiles.tileWh[0];
@@ -56,54 +55,84 @@ class Entity {
         const rem = this.pos[0] + reo;
         const tem = this.pos[1] + teo;
         const bem = this.pos[1] + beo;
-        const leor = -Math.ceil(this.size[0] / 2);
-        const reor = Math.ceil(this.size[0] / 2);
-        const teor = Math.ceil(this.size[1] / 2);
-        const beor = -Math.ceil(this.size[1] / 2);
+        const leor = -Math.ceil((this.size[0] / 2) * tiles.tileWh[0]);
+        const reor = Math.ceil((this.size[0] / 2) * tiles.tileWh[0]);
+        const teor = Math.ceil((this.size[1] / 2) * tiles.tileWh[1]);
+        const beor = -Math.ceil((this.size[1] / 2) * tiles.tileWh[1]);
         while (distance[1] > 0) {
             for (let i = leor; i <= reor; i++) {
-                const tilePos = this.pos.clone()
-                    .add([0, (this.size[1] / 2) * signs[1]])
+                const tilePos = this.pos
+                    .clone()
+                    .add([i, (this.size[1] / 2) * signs[1]])
+                    .add([0, signs[1] < 0 ? Math.floor(-this.size[1] * tiles.tileWh[1]) : 0])
                     .div(tiles.tileWh)
+                    .scale(-1, 1)
+                    .translate(tiles.wh[0], 0)
                     .clamp(1);
-                const tile = tiles.map[Point.mod(tilePos[0] + i, tiles.wh[0])]?.[tilePos[1] + signs[1]];
-                if (tile?.[0] !== 0) {
+                const pos = this.pos
+                    .clone()
+                    .add([i, (this.size[1] / 2) * signs[1]])
+                    .add([0, signs[1] < 0 ? -this.size[1] * tiles.tileWh[1] : 0])
+                    .mod(tiles.tileWh)
+                    .div(tiles.tileWh)
+                    .mul(5)
+                    .clamp(1)
+                    .scale(1,-1)
+                    .translate(0, 5);
+                const tile = tiles.map[Point.mod(tilePos[0], tiles.wh[0])]?.[tilePos[1] + signs[1]];
+                if (tile?.type > 0 && TileSpace.tileGeometry[tile.type][pos.toIndex(5)] > 0) {
                     this.vel[1] = 0;
                     if (signs[1] === -1) {
-                        this.pos[1] = Math.floor(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
+                        this.pos[1] = (Math.ceil(this.pos[1] / (tiles.tileWh[1] / 4)) * (tiles.tileWh[1] / 4));
                         this.collided = 'down';
                     } else {
-                        this.pos[1] = Math.ceil(this.pos[1] / tiles.tileWh[1]) * tiles.tileWh[1];
+                        this.pos[1] = ((Math.floor((this.pos[1] / tiles.tileWh[1]) * 5) / 5) * tiles.tileWh[1]) - Math.abs(teor);
                         this.collided = 'up';
                     }
                     break;
                 }
             }
-            this.pos[1] += Math.min(distance[1], 1) * tiles.tileWh[1] * signs[1];
-            distance[1] -= Math.min(distance[1], 1);
+            if (this.collided === 'down' || this.collided === 'up') break;
+            this.pos[1] += Math.min(distance[1], 4) * signs[1];
+            distance[1] -= Math.min(distance[1], 4);
         }
         // walk forward one tile on each axis
         while (distance[0] > 0) {
             for (let i = beor; i <= teor; i++) {
-                const tilePos = this.pos.clone()
-                    .add([(this.size[0] / 2) * signs[0], 0])
+                const tilePos = this.pos
+                    .clone()
+                    .add([(this.size[0] / 2) * signs[0], i])
+                    .add([signs[0] > 0 ? Math.floor(this.size[0] * tiles.tileWh[0]) : 0, 0])
                     .div(tiles.tileWh)
+                    .scale(-1, 1)
+                    .translate(tiles.wh[0], 0)
                     .clamp(1);
-                const tile = tiles.map[Point.mod(tilePos[0] + signs[0], tiles.wh[0])]?.[tilePos[1] + i];
-                if (tile?.[0] !== 0) {
+                const pos = this.pos
+                    .clone()
+                    .mod(tiles.tileWh)
+                    .add([(this.size[0] / 2) * signs[0], i])
+                    .add([signs[0] > 0 ? Math.floor(this.size[0] * tiles.tileWh[0]) : 0, 0])
+                    .div(tiles.tileWh)
+                    .mul(5)
+                    .clamp(1)
+                    .scale(1,-1)
+                    .translate(0, 5);
+                const tile = tiles.map[Point.mod(tilePos[0] + signs[0], tiles.wh[0])]?.[tilePos[1]];
+                if (tile?.type > 0 && TileSpace.tileGeometry[tile.type][pos] > 0) {
                     this.vel[0] = 0;
                     if (signs[0] === -1) {
-                        this.pos[0] = Math.ceil(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
+                        this.pos[0] = ((Math.ceil((this.pos[0] / tiles.tileWh[0]) * 5) / 5) * tiles.tileWh[0]) + Math.abs(leor);
                         this.collided = 'left';
                     } else {
-                        this.pos[0] = Math.floor(this.pos[0] / tiles.tileWh[0]) * tiles.tileWh[0];
+                        this.pos[0] = ((Math.floor((this.pos[0] / tiles.tileWh[0]) * 5) / 5) * tiles.tileWh[0]);
                         this.collided = 'right';
                     }
                     break;
                 }
             }
-            this.pos[0] += Math.min(distance[0], 1) * tiles.tileWh[0] * signs[0];
-            distance[0] -= Math.min(distance[0], 1);
+            if (this.collided === 'left' || this.collided === 'right') break;
+            this.pos[0] += Math.min(distance[0], 4) * signs[0];
+            distance[0] -= Math.min(distance[0], 4);
         }
         neighbors.forEach(ent => {
             const le = ent.pos[0] - ((ent.size[0] / 2) * tiles.tileWh[0]);
@@ -142,9 +171,9 @@ class Entity {
     }
     /** @param {TileSpace} tiles */
     transmit(tiles) {
-        const skin = this.render._allSkins[this.skin];
-        this.render.updateDrawableSkinId(this.draw, this.skin);
-        const scale = tiles.tileWh.clone().div(skin.size).mul(this.size).scale(100, -100);
+        const skin = this.render._allSkins[Physics.entityDatas[this.kind].skin];
+        this.render.updateDrawableSkinId(this.draw, Physics.entityDatas[this.kind].skin);
+        const scale = tiles.tileWh.clone().div(skin.size).mul(this.size).mul(100);
         this.render.updateDrawableScale(this.draw, scale);
         this.render.updateDrawablePosition(this.draw, this.pos.clone()
             .add(tiles.camera.pos.clone().scale(1, -1))
@@ -174,6 +203,7 @@ class Physics {
     ids = 0;
     /** @type {number} is the speed of sound irl, computed with tiles being one foot in length */
     maxSpeed = 343 / (1 / 3.281);
+    debugging = false;
     constructor(tiles, render) {
         this.render = render;
         this.tiles = tiles;
@@ -181,6 +211,16 @@ class Physics {
     loadAssets(assets) {
         Physics.entityDatas.error.skin = this.render.createSVGSkin(assets.get('error'));
         Physics.entityDatas.player.skin = this.render.createSVGSkin(assets.get('pang'));
+    }
+    enableDebug() {
+        const canvas = createCanvas(1,1);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'blue';
+        ctx.fillRect(0,0, 1,1);
+        const skin = this.render.createBitmapSkin(canvas, 1);
+        for (const name in Physics.entityDatas)
+            Physics.entityDatas[name].skin = skin;
+        this.debugging = true;
     }
     createEntity(x,y, kind) {
         const id = this.ids++;

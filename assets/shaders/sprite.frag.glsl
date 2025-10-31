@@ -1,5 +1,30 @@
 precision mediump float;
 
+#ifdef DRAW_MODE_elipse
+uniform float u_elipseStart;
+uniform float u_elipseEnd;
+uniform vec2 u_elipseRadius;
+uniform vec4 u_fillColor;
+uniform vec4 u_outlineColor;
+uniform float u_outlineThickness;
+uniform vec2 u_skinSize;
+#define HALF_PI 1.570795
+#define PI 3.14159
+#endif
+#ifdef DRAW_MODE_rectangle
+uniform vec2 u_skinSize;
+uniform vec4 u_fillColor;
+uniform vec4 u_outlineColor;
+uniform float u_outlineThickness;
+#endif
+#if defined(DRAW_MODE_rectangle) || defined(DRAW_MODE_elipse)
+vec4 merge(vec4 color1, vec4 color2) {
+  return (color1 * color1.a) + (color2 * (1.0 - color1.a));
+}
+#define MSAA_samplesX 3.0
+#define MSAA_samplesY 3.0
+#define MSAA_sampleIncrement 1.0 / (MSAA_samplesX * MSAA_samplesY)
+#endif
 #ifdef DRAW_MODE_silhouette
 uniform vec4 u_silhouetteColor;
 #else // DRAW_MODE_silhouette
@@ -50,6 +75,18 @@ uniform float u_saturation;
 #ifdef ENABLE_tintColor
 uniform highp float u_tintColor;
 #endif // ENABLE_tintColor
+#if defined(ENABLE_repeatX)
+uniform float u_repeatX;
+#endif
+#if defined(ENABLE_repeatY)
+uniform float u_repeatY;
+#endif
+#ifdef ENABLE_tintWhites
+uniform float u_tintWhite;
+#endif
+#ifdef ENABLE_tintBlacks
+uniform float u_tintBlack;
+#endif
 
 #ifdef DRAW_MODE_line
 varying vec4 v_lineColor;
@@ -71,7 +108,7 @@ varying vec2 v_texCoord;
 // Smaller values can cause problems on some mobile devices.
 const float epsilon = 1e-3;
 
-#if !defined(DRAW_MODE_silhouette) && (defined(ENABLE_color) || defined(ENABLE_saturation) || defined(ENABLE_tintColor))
+#if !defined(DRAW_MODE_silhouette) && (defined(ENABLE_color) || defined(ENABLE_saturation) || defined(ENABLE_tintColor) || defined(ENABLE_tintWhites) || defined(ENABLE_tintBlacks))
 // Branchless color conversions based on code from:
 // http://www.chilliant.com/rgb2hsv.html by Ian Taylor
 // Based in part on work by Sam Hocevar and Emil Persson
@@ -128,12 +165,13 @@ vec3 convertHSV2RGB(vec3 hsv)
 	return rgb * c + hsv.z - c;
 }
 
-vec3 decimalToRGB(highp float decimalColor) {
+vec4 decimalToRGB(highp float decimalColor) {
 	highp float blue = mod(decimalColor, 256.0) / 255.0;
 	highp float green = mod(floor(decimalColor / 256.0), 256.0) / 255.0;
 	highp float red = mod(floor(decimalColor / 65536.0), 256.0) / 255.0;
+	highp float alpha = mod(floor(decimalColor / 16777216.0), 256.0) / 255.0;
 
-	return vec3(red, green, blue);
+	return vec4(red, green, blue, alpha);
 }
 #endif // !defined(DRAW_MODE_silhouette) && (defined(ENABLE_color) || defined(ENABLE_saturation) || defined(ENABLE_tintColor))
 
@@ -185,7 +223,62 @@ void main()
 	}
 	#endif // ENABLE_fisheye
 
+	#ifdef ENABLE_repeatX
+	{
+		if (u_repeatX != 1.0) texcoord0.x = fract(texcoord0.x * u_repeatX);
+	}
+	#endif // ENABLE_repeatX
+
+	#ifdef ENABLE_repeatY
+	{
+		if (u_repeatY != 1.0) texcoord0.y = fract(texcoord0.y * u_repeatY);
+	}
+	#endif // ENABLE_repeatY
+
+	#ifdef DRAW_MODE_rectangle
+	vec4 color = u_fillColor;
+	if (u_outlineColor.a > 0.0 && u_outlineThickness > 0.0) {
+		float alpha = 0.0;
+		vec2 pos = (texcoord0 * u_skinSize) - vec2(1,1);
+		if (pos.x <= u_outlineThickness)
+			alpha += 1;
+		else if (pos.x >= (u_skinSize.x - u_outlineThickness))
+			alpha += 1;
+		else if (pos.y <= u_outlineThickness)
+			alpha += 1;
+		else if (pos.y >= (u_skinSize.y - u_outlineThickness))
+			alpha += 1;
+		color = merge(vec4(u_outlineColor.rgb, alpha * u_outlineColor.a), color);
+	}
+	gl_FragColor = color;
+	#endif
+	#ifdef DRAW_MODE_elipse
+	vec4 color = u_fillColor;
+	float alpha;
+	if (u_fillColor.a > 0.0) {
+		alpha = 0.0;
+		vec2 dif = texcoord0 - vec2(0.5, 0.5);
+		float dist = sqrt((dif.x * dif.x) + (dif.y * dif.y));
+		float dir = atan(dif.y, dif.x) + PI;
+		if (dist <= 0.5 && dir >= u_elipseStart && dir <= u_elipseEnd)
+			alpha += 1;
+		color = vec4(u_fillColor.rgb, alpha * u_fillColor.a);
+	}
+	if (u_outlineThickness > 0.0 && u_outlineColor.a > 0.0) {
+		alpha = 0.0;
+		vec2 dif = texcoord0 - vec2(0.5, 0.5);
+		float dist = sqrt((dif.x * dif.x) + (dif.y * dif.y));
+		float dir = atan(dif.y, dif.x) + PI;
+		float dire = abs((HALF_PI - abs(atan(dif.y, dif.x))) / HALF_PI);
+		if (dist <= 0.5 && dist >= (0.5 - (u_outlineThickness / ((u_skinSize.x * dire) + (u_skinSize.y * (1.0- dire))))) && dir >= u_elipseStart && dir <= u_elipseEnd)
+			alpha += 1;
+		color = merge(vec4(u_outlineColor.rgb, alpha * u_outlineColor.a), color);
+	}
+	gl_FragColor = color;
+	#endif
+	#ifdef DRAW_MODE_default
 	gl_FragColor = texture2D(u_skin, texcoord0);
+	#endif
 
 	#if defined(ENABLE_color) || defined(ENABLE_brightness) || defined(ENABLE_saturation) || defined(ENABLE_tintColor)
 	// Divide premultiplied alpha values for proper color processing
@@ -226,9 +319,9 @@ void main()
 	
 	#ifdef ENABLE_tintColor
 	{
-		vec3 tintRgb = decimalToRGB(u_tintColor);
+		vec4 tintRgb = decimalToRGB(u_tintColor);
 
-		gl_FragColor.rgb *= tintRgb;
+		gl_FragColor *= tintRgb;
 	}
 	#endif // ENABLE_tintColor
 
@@ -260,6 +353,20 @@ void main()
 	#ifdef ENABLE_opaque
 	gl_FragColor.a *= u_opaque;
 	#endif // ENABLE_opaque
+
+	#ifdef ENABLE_tintWhites
+	{
+		vec4 tintRgb = decimalToRGB(u_tintWhite);
+		gl_FragColor *= tintRgb;
+	}
+	#endif
+
+	#ifdef ENABLE_tintBlacks
+	{
+		vec4 tintRgb = decimalToRGB(u_tintBlack);
+		gl_FragColor = (vec4(1,1,1,1) - gl_FragColor) * tintRgb;
+	}
+	#endif
 
 	#ifdef DRAW_MODE_silhouette
 	// Discard fully transparent pixels for stencil test
@@ -310,4 +417,7 @@ void main()
 	#ifdef DRAW_MODE_background
 	gl_FragColor = u_backgroundColor;
 	#endif
+
+	// premult hint doesnt seem to do anything, so just always statically premultiply
+	gl_FragColor = vec4(gl_FragColor.rgb * gl_FragColor.a, gl_FragColor.a);
 }

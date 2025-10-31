@@ -5,6 +5,8 @@ const twgl = require('twgl.js');
 
 const Skin = require('./Skin');
 const BitmapSkin = require('./BitmapSkin');
+const ElipseSkin = require('./ElipseSkin');
+const RectangleSkin = require('./RectangleSkin');
 const Drawable = require('./Drawable');
 const Rectangle = require('./Rectangle');
 const PenSkin = require('./PenSkin');
@@ -273,6 +275,7 @@ class RenderWebGL extends EventEmitter {
         gl.disable(gl.DEPTH_TEST);
         /** @todo disable when no partial transparency? */
         gl.enable(gl.BLEND);
+        gl.enable(gl.SCISSOR_TEST);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
         /**
@@ -536,6 +539,41 @@ class RenderWebGL extends EventEmitter {
     }
 
     /**
+     * Create a new elipse skin.
+     * @param {[number,number]} radius - What the two radi of the elipse are
+     * @param {number[]} [fillColor=[1,1,1,1]] - Defines the color to be used for the fill of the elipse, in 0-1 RGBA
+     * @param {Array<number>} [rotationCenter] - Optional rotation center for the elipse. If not supplied, it will be the center
+     * @param {number} [startAngle=0] - Optional, defines at what angle the elipse starts
+     * @param {number} [endAngle=360] - Optional, defines at what angle the elipse stops
+     * @param {number[]} [outlineColor=[0,0,0,0]] - Defines the color to be used for the outline of the elipse, in 0-1 RGBA
+     * @returns {!int} the ID for the new skin.
+     */
+    createElipseSkin (radius, fillColor = [1,1,1,1], rotationCenter, startAngle = 0, endAngle = 360, outlineColor = [0,0,0,0], outlineThickness = 1) {
+        const skinId = this._nextSkinId++;
+        const newSkin = new ElipseSkin(skinId, this);
+        newSkin.configure(radius, fillColor, rotationCenter, startAngle, endAngle, outlineColor, outlineThickness);
+        this._allSkins[skinId] = newSkin;
+        return skinId;
+    }
+
+    /**
+     * Create a new elipse skin.
+     * @param {[number,number]} size - What the two radi of the elipse are
+     * @param {number[]} [fillColor=[1,1,1,1]] - Defines the color to be used for the fill of the elipse, in 0-1 RGBA
+     * @param {number[]} [outlineColor=[0,0,0,0]] - Defines the color to be used for the outline of the elipse, in 0-1 RGBA
+     * @param {number} [outlineThickness=1] - The thickness of the outline to be drawn
+     * @param {Array<number>} [rotationCenter] - Optional rotation center for the elipse. If not supplied, it will be the center
+     * @returns {!int} the ID for the new skin.
+     */
+    createRectangleSkin (size, fillColor = [1,1,1,1], outlineColor = [0,0,0,0], outlineThickness = 1, rotationCenter) {
+        const skinId = this._nextSkinId++;
+        const newSkin = new RectangleSkin(skinId, this);
+        newSkin.configure(size, fillColor, outlineColor, outlineThickness, rotationCenter);
+        this._allSkins[skinId] = newSkin;
+        return skinId;
+    }
+
+    /**
      * Create a new SVG skin.
      * @param {!string} svgData - new SVG to use.
      * @param {?Array<number>} rotationCenter Optional: rotation center of the skin. If not supplied, the center of the
@@ -611,6 +649,46 @@ class RenderWebGL extends EventEmitter {
 
         const newSkin = new SVGSkin(skinId, this);
         newSkin.setSVG(svgData, rotationCenter);
+        this._reskin(skinId, newSkin);
+    }
+
+    /**
+     * Update an existing bitmap skin, or create a bitmap skin if the previous skin was not bitmap.
+     * @param {[number,number]} radius - What the two radi of the elipse are
+     * @param {number[]} [fillColor=[1,1,1,1]] - Defines the color to be used for the fill of the elipse, in 0-1 RGBA
+     * @param {Array<number>} [rotationCenter] - Optional rotation center for the elipse. If not supplied, it will be the center
+     * @param {number} [startAngle=0] - Optional, defines at what angle the elipse starts
+     * @param {number} [endAngle=360] - Optional, defines at what angle the elipse stops
+     * @param {number[]} [outlineColor=[0,0,0,0]] - Defines the color to be used for the outline of the elipse, in 0-1 RGBA
+     * @param {number} [outlineThickness=1] - The thickness of the outline to be drawn
+     */
+    updateElipseSkin (skinId, radius, fillColor = [1,1,1,1], rotationCenter, startAngle = 0, endAngle = 360, outlineColor = [0,0,0,0], outlineThickness = 1) {
+        if (this._allSkins[skinId] instanceof ElipseSkin) {
+            this._allSkins[skinId].configure(radius, fillColor, rotationCenter, startAngle, endAngle, outlineColor, outlineThickness);
+            return;
+        }
+
+        const newSkin = new ElipseSkin(skinId, this);
+        newSkin.configure(radius, fillColor, rotationCenter, startAngle, endAngle, outlineColor, outlineThickness);
+        this._reskin(skinId, newSkin);
+    }
+
+    /**
+     * Update an existing bitmap skin, or create a bitmap skin if the previous skin was not bitmap.
+     * @param {[number,number]} size - What the two radi of the elipse are
+     * @param {number[]} [fillColor=[1,1,1,1]] - Defines the color to be used for the fill of the elipse, in 0-1 RGBA
+     * @param {number[]} [outlineColor=[0,0,0,0]] - Defines the color to be used for the outline of the elipse, in 0-1 RGBA
+     * @param {number} [outlineThickness=1] - The thickness of the outline to be drawn
+     * @param {Array<number>} [rotationCenter] - Optional rotation center for the elipse. If not supplied, it will be the center
+     */
+    updateRectangleSkin (skinId, radius, fillColor = [1,1,1,1], rotationCenter, startAngle = 0, endAngle = 360, outlineColor = [0,0,0,0], outlineThickness = 1) {
+        if (this._allSkins[skinId] instanceof RectangleSkin) {
+            this._allSkins[skinId].configure(size, fillColor, outlineColor, outlineThickness, rotationCenter);
+            return;
+        }
+
+        const newSkin = new RectangleSkin(skinId, this);
+        newSkin.configure(size, fillColor, outlineColor, outlineThickness, rotationCenter);
         this._reskin(skinId, newSkin);
     }
 
@@ -2151,6 +2229,20 @@ class RenderWebGL extends EventEmitter {
     }
 
     /**
+     * Clear a specific location on the pen layer.
+     * @param {int} penSkinID - the unique ID of a Pen Skin.
+     * @param {int} x the position to clear at
+     * @param {int} y the position to clear at
+     * @param {int} width the width to clear
+     * @param {int} height the height to clear
+     */
+    penClearRect (penSkinID, x, y, width, height) {
+        this.dirty = true;
+        const skin = /** @type {PenSkin} */ this._allSkins[penSkinID];
+        skin.clear(x,y, width, height);
+    }
+
+    /**
      * Draw a point on a pen layer.
      * @param {int} penSkinID - the unique ID of a Pen Skin.
      * @param {PenAttributes} penAttributes - how the point should be drawn.
@@ -2408,7 +2500,7 @@ class RenderWebGL extends EventEmitter {
             let effectBits = drawable.enabledEffects;
             effectBits &= Object.prototype.hasOwnProperty.call(opts, 'effectMask')
                 ? opts.effectMask : effectBits;
-            const newShader = this._shaderManager.getShader(drawMode, effectBits);
+            const newShader = this._shaderManager.getShader(drawable.skin.drawMode ?? drawMode, effectBits);
 
             // Manually perform region check. Do not create functions inside a
             // loop.

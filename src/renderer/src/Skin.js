@@ -95,7 +95,7 @@ class Skin {
      */
     // eslint-disable-next-line no-unused-vars
     useNearest (scale, drawable) {
-        return false;
+        return true;
     }
 
     /**

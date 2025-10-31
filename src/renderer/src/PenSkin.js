@@ -194,13 +194,17 @@ class PenSkin extends Skin {
     /**
      * Clear the pen layer.
      */
-    clear () {
+    clear (x,y, width, height) {
         this._renderer.enterDrawRegion(this._usePenBufferDrawRegionId);
 
         /* Reset framebuffer to transparent black */
         const gl = this._renderer.gl;
+        if (width && height)
+            gl.scissor(x, y, width, height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+        if (width && height)
+            gl.scissor(0,0, gl.canvas.width, gl.canvas.height);
 
         this._silhouetteDirty = true;
     }

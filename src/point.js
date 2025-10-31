@@ -218,5 +218,17 @@ class Point extends Float32Array {
         const diff = this.clone().sub(ref);
         return (Math.atan2(diff[1], diff[0]) / Math.PI) * 180;
     }
+    /**
+     * Converts this point to a 0-1 value representing a vector of length one
+     * @param {Point} ref The point that this point will be in reference to, 0,0 when null
+     * @returns {Point} This point
+     */
+    simplify(ref = new Point(0,0)) {
+        const dir = this.dir(ref);
+        this[0] = 0;
+        this[1] = 1;
+        this.rotate(dir);
+        return this;
+    }
 }
 module.exports = Point;

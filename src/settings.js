@@ -16,113 +16,130 @@ const keySwitches = [
         [10.25,0, 1,.75, 'F9', names['F9']],
         [11.25,0, 1,.75, 'F10', names['F10']],
         [12.25,0, 1,.75, 'F11', names['F11']],
-        [13.25,0, 1,.75, 'F12', names['F12']],
-        [17,0, 1,.75, 'Pause', names['Pause']],
-        [15,0, 1,.75, 'PrtScr', names['PrintScreen']],
-        [16,0, 1,.75, 'Scroll', names['ScrollLock']]]
+        [13.25,0, 1,.75, 'F12', names['F12']]],
     ],
     [ // row two
-        3,3,
-        [[0,1, 1,1, '~\n`', names['Backquote']],
-        [1,1, 1,1, '!\n1', names['1']],
-        [2,1, 1,1, '@\n2', names['2']],
-        [3,1, 1,1, '#\n3', names['3']],
-        [4,1, 1,1, '$\n4', names['4']],
-        [5,1, 1,1, '%\n5', names['5']],
-        [6,1, 1,1, '^\n6', names['6']],
-        [7,1, 1,1, '&\n7', names['7']],
-        [8,1, 1,1, '*\n8', names['8']],
-        [9,1, 1,1, '(\n9', names['9']],
-        [10,1, 1,1, ')\n0', names['0']],
-        [11,1, 1,1, '_\n-', names['Minus']],
-        [12,1, 1,1, '+\n=', names['Equal']],
-        [13,1, 2,1, '← Back\nSpace', names['Backspace']],
-        [15.25,1, 1,1, 'Insert', names['Insert']],
-        [16.25,1, 1,1, 'Home', names['Home']],
-        [17.25,1, 1,1, 'Page\nUp', names['PageUp']],
-        [18.75,1, 1,1, 'Num\nLock', names['NumLock']],
-        [19.75,1, 1,1, '/', names['NumpadDivide']],
-        [20.75,1, 1,1, '*', names['NumpadMultiply']],
-        [21.75,1, 1,1, '-', names['NumpadSubtract']]],
+        3,1,
+        [[.60,.75, 1,.75, 'F13', names['F13']],
+        [1.75,.75, 1,.75, 'F14', names['F14']],
+        [2.75,.75, 1,.75, 'F15', names['F15']],
+        [3.75,.75, 1,.75, 'F16', names['F16']],
+        [4.75,.75, 1,.75, 'F17', names['F17']],
+        [6.375,.75, 1,.75, 'F18', names['F18']],
+        [7.375,.75, 1,.75, 'F19', names['F19']],
+        [8.375,.75, 1,.75, 'F20', names['F20']],
+        [9.375,.75, 1,.75, 'F21', names['F21']],
+        [11,.75, 1,.75, 'F22', names['F22']],
+        [12,.75, 1,.75, 'F23', names['F23']],
+        [13,.75, 1,.75, 'F24', names['F24']],
+        [14,.75, 1,.75, 'F25', names['F25']],
+        [17,.75, 1,.75, 'Pause', names['Pause']],
+        [15,.75, 1,.75, 'PrtScr', names['PrintScreen']],
+        [16,.75, 1,.75, 'Scroll', names['ScrollLock']]]
     ],
-    [ // third row
-        7,7,
-        [[0,2, 1.5,1, 'Tab', names['Tab']],
-        [1.5,2, 1,1, 'Q', names['Q']],
-        [2.5,2, 1,1, 'W', names['W']],
-        [3.5,2, 1,1, 'E', names['E']],
-        [4.5,2, 1,1, 'R', names['R']],
-        [5.5,2, 1,1, 'T', names['T']],
-        [6.5,2, 1,1, 'Y', names['Y']],
-        [7.5,2, 1,1, 'U', names['U']],
-        [8.5,2, 1,1, 'I', names['I']],
-        [9.5,2, 1,1, 'O', names['O']],
-        [10.5,2, 1,1, 'P', names['P']],
-        [11.5,2, 1,1, '{\n[', names['LeftBracket']],
-        [12.5,2, 1,1, '}\n]', names['RightBracket']],
-        [13.5,2, 1.5,1, '|\n\\', names['Backslash']],
-        [16.5,2, 1,1, 'End', names['End']],
-        [15.5,2, 1,1, 'Delete', names['Delete']],
-        [17.5,2, 1,1, 'Page\nDown', names['PageDown']],
-        [19,2, 1,1, '7\nHome', names['Numpad7']],
-        [20,2, 1,1, '8\n↑', names['Numpad8']],
-        [21,2, 1,1, '9\nPgUp', names['Numpad9']],
-        [22,2, 1,1, '+', names['NumpadAdd']]],
+    [ // row three
+        6,2,
+        [[0,2, 1,1, '~\n`', names['Backquote']],
+        [1,2, 1,1, '!\n1', names['1']],
+        [2,2, 1,1, '@\n2', names['2']],
+        [3,2, 1,1, '#\n3', names['3']],
+        [4,2, 1,1, '$\n4', names['4']],
+        [5,2, 1,1, '%\n5', names['5']],
+        [6,2, 1,1, '^\n6', names['6']],
+        [7,2, 1,1, '&\n7', names['7']],
+        [8,2, 1,1, '*\n8', names['8']],
+        [9,2, 1,1, '(\n9', names['9']],
+        [10,2, 1,1, ')\n0', names['0']],
+        [11,2, 1,1, '_\n-', names['Minus']],
+        [12,2, 1,1, '+\n=', names['Equal']],
+        [13,2, 2,1, '← Back\nSpace', names['Backspace']],
+        [15.25,2, 1,1, 'Insert', names['Insert']],
+        [16.25,2, 1,1, 'Home', names['Home']],
+        [17.25,2, 1,1, 'Page\nUp', names['PageUp']],
+        [18.75,2, 1,1, 'Num\nLock', names['NumLock']],
+        [19.75,2, 1,1, '/', names['NumpadDivide']],
+        [20.75,2, 1,1, '*', names['NumpadMultiply']],
+        [21.75,2, 1,1, '-', names['NumpadSubtract']]],
     ],
-    [ // fourth row
+    [ // row four
+        9,5,
+        [[0,3, 1.5,1, 'Tab', names['Tab']],
+        [1.5,3, 1,1, 'Q', names['Q']],
+        [2.5,3, 1,1, 'W', names['W']],
+        [3.5,3, 1,1, 'E', names['E']],
+        [4.5,3, 1,1, 'R', names['R']],
+        [5.5,3, 1,1, 'T', names['T']],
+        [6.5,3, 1,1, 'Y', names['Y']],
+        [7.5,3, 1,1, 'U', names['U']],
+        [8.5,3, 1,1, 'I', names['I']],
+        [9.5,3, 1,1, 'O', names['O']],
+        [10.5,3, 1,1, 'P', names['P']],
+        [11.5,3, 1,1, '{\n[', names['LeftBracket']],
+        [12.5,3, 1,1, '}\n]', names['RightBracket']],
+        [13.5,3, 1.5,1, '|\n\\', names['Backslash']],
+        [16.5,3, 1,1, 'End', names['End']],
+        [15.5,3, 1,1, 'Delete', names['Delete']],
+        [17.5,3, 1,1, 'Page\nDown', names['PageDown']],
+        [19,3, 1,1, '7\nHome', names['Numpad7']],
+        [20,3, 1,1, '8\n↑', names['Numpad8']],
+        [21,3, 1,1, '9\nPgUp', names['Numpad9']],
+        [22,3, 1,2, '+', names['NumpadAdd']]],
+    ],
+    [ // row five
         6,8,
-        [[0,3, 1.75,1, 'Caps Lock', names['CapsLock']],
-        [1.75,3, 1,1, 'A', names['A']],
-        [2.75,3, 1,1, 'S', names['S']],
-        [3.75,3, 1,1, 'D', names['D']],
-        [4.75,3, 1,1, 'F', names['F']],
-        [5.75,3, 1,1, 'G', names['G']],
-        [6.75,3, 1,1, 'H', names['H']],
-        [7.75,3, 1,1, 'J', names['J']],
-        [8.75,3, 1,1, 'K', names['K']],
-        [9.75,3, 1,1, 'L', names['L']],
-        [10.75,3, 1,1, ':\n;', names['Semicolon']],
-        [11.75,3, 1,1, '"\n\'', names['Apostrophe']],
-        [12.75,3, 2.25,1, 'Enter ↵', names['NumpadEnter']],
-        [20.25,3, 1,1, '5\n', names['Numpad5']],
-        [19.25,3, 1,1, '4\n←', names['Numpad4']],
-        [21.25,3, 1,1, '6\n→', names['Numpad6']]],
+        [[0,4, 1.75,1, 'Caps Lock', names['CapsLock']],
+        [1.75,4, 1,1, 'A', names['A']],
+        [2.75,4, 1,1, 'S', names['S']],
+        [3.75,4, 1,1, 'D', names['D']],
+        [4.75,4, 1,1, 'F', names['F']],
+        [5.75,4, 1,1, 'G', names['G']],
+        [6.75,4, 1,1, 'H', names['H']],
+        [7.75,4, 1,1, 'J', names['J']],
+        [8.75,4, 1,1, 'K', names['K']],
+        [9.75,4, 1,1, 'L', names['L']],
+        [10.75,4, 1,1, ':\n;', names['Semicolon']],
+        [11.75,4, 1,1, '"\n\'', names['Apostrophe']],
+        [12.75,4, 2.25,1, 'Enter ↵', names['NumpadEnter']],
+        [19,4, 1,1, '4\n←', names['Numpad4']],
+        [20,4, 1,1, '5\n', names['Numpad5']],
+        [21,4, 1,1, '6\n→', names['Numpad6']]],
     ],
-    [ // fifth row
+    [ // row six
         3,3,
-        [[0,4, 2.5,1, 'Shift', names['ShiftLeft']],
-        [2.5,4, 1,1, 'Z', names['Z']],
-        [3.5,4, 1,1, 'X', names['X']],
-        [4.5,4, 1,1, 'C', names['C']],
-        [5.5,4, 1,1, 'V', names['V']],
-        [6.5,4, 1,1, 'B', names['B']],
-        [7.5,4, 1,1, 'N', names['N']],
-        [8.5,4, 1,1, 'M', names['M']],
-        [9.5,4, 1,1, '<\n,', names['Comma']],
-        [10.5,4, 1,1, '>\n.', names['Period']],
-        [11.5,4, 1,1, '?\n/', names['Slash']],
-        [12.5,4, 2.5,1, 'Shift', names['ShiftRight']],
-        [16.25,4, 1,1, '↑', names['ArrowUp']],
-        [19.5,4, 1,1, '1\nEnd', names['Numpad1']],
-        [20.5,4, 1,1, '2\n↓', names['Numpad2']],
-        [21.5,4, 1,1, '3\nPgDn', names['Numpad3']],
-        [22.5,4, 1,1, 'Enter', names['Enter']]],
+        [[0,5, 2.5,1, 'Shift', names['ShiftLeft']],
+        [2.5,5, 1,1, 'Z', names['Z']],
+        [3.5,5, 1,1, 'X', names['X']],
+        [4.5,5, 1,1, 'C', names['C']],
+        [5.5,5, 1,1, 'V', names['V']],
+        [6.5,5, 1,1, 'B', names['B']],
+        [7.5,5, 1,1, 'N', names['N']],
+        [8.5,5, 1,1, 'M', names['M']],
+        [9.5,5, 1,1, '<\n,', names['Comma']],
+        [10.5,5, 1,1, '>\n.', names['Period']],
+        [11.5,5, 1,1, '?\n/', names['Slash']],
+        [12.5,5, 2.5,1, 'Shift', names['ShiftRight']],
+        [16.25,5, 1,1, '↑', names['ArrowUp']],
+        [19.25,5, 1,1, '1\nEnd', names['Numpad1']],
+        [20.25,5, 1,1, '2\n↓', names['Numpad2']],
+        [21.25,5, 1,1, '3\nPgDn', names['Numpad3']],
+        [22.25,5, 1,1, 'Enter', names['Enter']]],
     ],
-    [ // sixth row
+    [ // row seven
         0,0,
-        [[0,5, 1.5,1, 'Ctrl', names['ControlLeft']],
-        [1.5,5, 1.25,1, '⌘', names['MetaLeft']], // meta key, or windows key, or whatever mac calls it
-        [2.75,5, 1.5,1, 'Alt', names['AltLeft']],
-        [4.25,5, 5.75,1, '', names['Space']],
-        [10,5, 1.25,1, 'Alt', names['AltRight']],
-        [11.25,5, 1.25,1, '⌘', names['MetaRight']],
-        [12.5,5, 1.25,1, '☰', names['ContextMenu']],
-        [13.75,5, 1.25,1, 'Ctrl', names['ControlRight']],
-        [15.5,5, 1,1, '←', names['ArrowRight']],
-        [16.5,5, 1,1, '↓', names['ArrowDown']],
-        [17.5,5, 1,1, '→', names['ArrowLeft']],
-        [19.5,5, 2.25,1, '0\nInsert', names['Numpad0']],
-        [21.75,5, 1,1, '.\nDel', names['NumpadDecimal']]],
+        [[0,6, 1.5,1, 'Ctrl', names['ControlLeft']],
+        [1.5,6, 1.25,1, '⌘', names['MetaLeft']], // meta key, or windows key, or whatever mac calls it
+        [2.75,6, 1.5,1, 'Alt', names['AltLeft']],
+        [4.25,6, 5.75,1, '', names['Space']],
+        [10,6, 1.25,1, 'Alt', names['AltRight']],
+        [11.25,6, 1.25,1, '⌘', names['MetaRight']],
+        [12.5,6, 1.25,1, '☰', names['ContextMenu']],
+        [13.75,6, 1.25,1, 'Ctrl', names['ControlRight']],
+        [15.5,6, 1,1, '←', names['ArrowRight']],
+        [16.5,6, 1,1, '↓', names['ArrowDown']],
+        [17.5,6, 1,1, '→', names['ArrowLeft']],
+        [19.25,6, 2.25,1, '0\nInsert', names['Numpad0']],
+        [21.5,6, 1,1, '.\nDel', names['NumpadDecimal']],
+        [22.5,6, 1,1, '=', names['NumpadEqual']]],
     ],
 ];
 class Settings {
@@ -135,7 +152,7 @@ class Settings {
     constructor(render, window) {
         this.render = render;
         this.window = window;
-        this.tiles = new DebuggerTiles(this.window.width, this.window.height, 'settings', this.render, window, {});
+        this.tiles = new DebuggerTiles(1, this.window.width, this.window.height, 'settings', this.render, window, {});
         this.tiles.direction = 'down';
         this.tiles.alignmentColumn = 'center';
         this.tiles.alignmentRow = 'center';
@@ -146,11 +163,11 @@ class Settings {
             if (!changed) return true;
             changed = false;
             ctx.resetTransform();
-            ctx.clearRect(0,0, this.width, this.height);
+            ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
             ctx.fillStyle = '#0000007F';
-            ctx.fillRect(0,0, this.width, this.height);
-            ctx.scale(1, -1);
-            ctx.translate(this.width / 2, -this.height / 2);
+            ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+            ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+            ctx.scale(this.subSampling, this.subSampling);
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 1;
             ctx.textBaseline = 'middle'
@@ -172,7 +189,7 @@ class Settings {
                 ctx.arcTo(...bottomRight, ...bottom, rad);
                 ctx.closePath();
             }
-            createRoundRect(-449.5,-117, 899,234, 8);
+            createRoundRect(-449.5,-136, 899,272, 8);
             ctx.stroke();
             let labelsUp = true;
             let leftList = true;
@@ -184,7 +201,7 @@ class Settings {
                 x *= 38;
                 y *= 38;
                 x += -443.5;
-                y += -111;
+                y += -130;
                 w *= 38;
                 h *= 38;
                 w -= 6;
@@ -212,7 +229,8 @@ class Settings {
                     ctx.fillText(line, x + ((w - Math.min(measures.width, w -6)) / 2), textY, w - 6);
                     textY += height;
                 }
-                if (filled) {
+                if (true) {
+                    name ||= 'Clear Camera Position'
                     ctx.lineWidth = 1;
                     ctx.strokeStyle = '#ffffff80';
                     if (leftList) ctx.textAlign = 'right';
@@ -222,7 +240,7 @@ class Settings {
                     if (labelsUp) {
                         const nameY = (leftList ? nameRowTopLeft++ : nameRowTopRight++) * lineHeight;
                         ctx.moveTo(x + (w / 2), y);
-                        endPoint = [x + (w / 2), (((-117 - y) + y) - 4) - nameY];
+                        endPoint = [x + (w / 2), (((-136 - y) + y) - 4) - nameY];
                         ctx.lineTo(...endPoint);
                         ctx.arcTo(endPoint[0], endPoint[1] - 4, endPoint[0] += leftList ? -4 : 4, endPoint[1] -= 4, 4);
                         ctx.translate(...endPoint);
@@ -233,7 +251,7 @@ class Settings {
                     } else {
                         const nameY = (leftList ? nameRowBottomLeft++ : nameRowBottomRight++) * lineHeight;
                         ctx.moveTo(x + (w / 2), y + h);
-                        endPoint = [x + (w / 2), (117 - (y + h)) + (y + h) + 4 + nameY];
+                        endPoint = [x + (w / 2), (136 - (y + h)) + (y + h) + 4 + nameY];
                         ctx.lineTo(...endPoint);
                         ctx.arcTo(endPoint[0], endPoint[1] + 4, endPoint[0] += leftList ? -4 : 4, endPoint[1] += 4, 4);
                         ctx.translate(...endPoint);

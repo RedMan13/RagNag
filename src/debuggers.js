@@ -26,11 +26,13 @@ class DebuggerTile {
     tooltip = '';
     /** @type {number|null} */
     hoveredAt = null;
-    constructor(render, layer, data, filler, w,h, x,y) {
-        this.canvas = createCanvas(w,h);
+    subSampling = 2;
+    constructor(render, layer, data, filler, subSampling, w,h, x,y) {
+        this.subSampling = subSampling;
+        this.canvas = createCanvas(w * this.subSampling, h * this.subSampling);
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         this.draw = render.createDrawable(layer);
-        this.skin = render.createBitmapSkin(this.canvas, 1, [0,0]);
+        this.skin = render.createBitmapSkin(this.canvas, this.subSampling, [0,0]);
         this.filler = filler.bind(this);
         render.updateDrawableSkinId(this.draw, this.skin);
         this.x = x;
@@ -40,10 +42,10 @@ class DebuggerTile {
         this.render = render;
         this.data = data;
     }
-    get width() { return this.canvas.width; }
-    set width(value) { this.canvas.width = value; }
-    get height() { return this.canvas.height; }
-    set height(value) { this.canvas.height = value; }
+    get width() { return this.canvas.width / this.subSampling; }
+    set width(value) { this.canvas.width = value * this.subSampling; }
+    get height() { return this.canvas.height / this.subSampling; }
+    set height(value) { this.canvas.height = value * this.subSampling; }
     /**
      * Render the contents of this drawable tile
      */
@@ -69,7 +71,7 @@ class DebuggerTile {
         for (let i = 0; i < data.length; i++)
             data[i] = data[i] * (data[(Math.floor(i / 4) * 4) + 3] / 255);
         const image = Image.fromPixels(this.canvas.width, this.canvas.height, 32, Buffer.from(data));
-        this.render.updateBitmapSkin(this.skin, image, 1, [0,0]);
+        this.render.updateBitmapSkin(this.skin, image, this.subSampling, [0,0]);
     }
 }
 class DebuggerTiles {
@@ -123,7 +125,9 @@ class DebuggerTiles {
     }
     /** @type {import('glfw-raub').Window} */
     window = null;
-    constructor(w,h, layer = 'debugger', render, window, dataCab) {
+    subSampling = 2;
+    constructor(subSampling, w,h, layer = 'debugger', render, window, dataCab) {
+        this.subSampling = subSampling;
         this.width = w;
         this.height = h;
         this.tiles = [];
@@ -156,7 +160,7 @@ class DebuggerTiles {
             onclick = null;
         }
         const pos = typeof x === 'number' ? [x,y] : this.makePosition(w,h);
-        const tile = new DebuggerTile(this.render, this.layer, this.data, func, w,h, pos[0],pos[1]);
+        const tile = new DebuggerTile(this.render, this.layer, this.data, func, this.subSampling, w,h, pos[0],pos[1]);
         tile.renderContent();
         tile.tooltip = tooltip || '';
         tile.onclick = onclick;
@@ -282,8 +286,6 @@ class DebuggerTiles {
             this.tooltip.ctx.clearRect(0,0, this.tooltip.canvas.width, this.tooltip.canvas.height);
             const width = this.tooltip.canvas.width = maxWidth;
             const height = this.tooltip.canvas.height = lines.length * lineHeight;
-            this.tooltip.ctx.scale(1, -1);
-            this.tooltip.ctx.translate(0, -height);
             if (!width || !height) return;
             this.tooltip.ctx.fillStyle = '#0000002f';
             this.tooltip.ctx.strokeStyle = '#3d3b3b2f';

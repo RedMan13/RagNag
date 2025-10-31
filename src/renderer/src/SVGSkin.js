@@ -145,7 +145,9 @@ class SVGSkin extends Skin {
             return super.getTexture();
         this._context.clearRect(0, 0, this._canvas.width, this._canvas.height);
         // console.log(transform);
-        this._context.setTransform(scale, transform[0], transform[1], scale, 0, 0);
+        this._context.scale(1,-1);
+        this._context.translate(0, -this._canvas.height);
+        this._context.scale(scale, scale);
         this._context.drawImage(this._svgImage, 0, 0);
 
         // webgl-raub is incapable of loading textures from the 2d canvas, so we convert it to something it can load from.
