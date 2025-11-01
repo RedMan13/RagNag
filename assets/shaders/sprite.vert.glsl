@@ -1,15 +1,16 @@
+#version 300 es
 precision mediump float;
 
 #ifdef DRAW_MODE_line
 uniform vec2 u_stageSize;
-attribute vec2 a_lineThicknessAndLength;
-attribute vec4 a_penPoints;
-attribute vec4 a_lineColor;
+in vec2 a_lineThicknessAndLength;
+in vec4 a_penPoints;
+in vec4 a_lineColor;
 
-varying vec4 v_lineColor;
-varying float v_lineThickness;
-varying float v_lineLength;
-varying vec4 v_penPoints;
+out vec4 v_lineColor;
+out float v_lineThickness;
+out float v_lineLength;
+out vec4 v_penPoints;
 
 // Add this to divisors to prevent division by 0, which results in NaNs propagating through calculations.
 // Smaller values can cause problems on some mobile devices.
@@ -19,7 +20,7 @@ const float epsilon = 1e-3;
 #if !(defined(DRAW_MODE_line) || defined(DRAW_MODE_background))
 uniform mat4 u_projectionMatrix;
 uniform mat4 u_modelMatrix;
-attribute vec2 a_texCoord;
+in vec2 a_texCoord;
 #if defined(ENABLE_repeatX)
 uniform float u_repeatX;
 #endif
@@ -34,9 +35,9 @@ uniform float u_verticalShear;
 #endif
 #endif
 
-attribute vec2 a_position;
+in vec2 a_position;
 
-varying vec2 v_texCoord;
+out vec2 v_texCoord;
 
 void main() {
 	#ifdef DRAW_MODE_line
@@ -99,11 +100,11 @@ void main() {
 		y = 0.5 - u_repeatY;
 	#endif
 	#ifdef ENABLE_horizontalShear
-	if (y > 0.0)
+	if (y < 0.0)
 		x *= u_horizontalShear;
 	#endif
 	#ifdef ENABLE_verticalShear
-	if (x > 0.0)
+	if (x < 0.0)
 		y *= u_verticalShear;
 	#endif
 	v_texCoord = a_texCoord;

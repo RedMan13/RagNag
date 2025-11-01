@@ -50,7 +50,7 @@ class MainGame {
     render = null;
     /** @type {TileSpace} */
     tiles = null;
-    /** @type {} */
+    /** @type {TextLayer} */
     text = null;
     /** @type {DebuggerTiles} */
     debugTiles = null;
@@ -495,6 +495,42 @@ class MainGame {
         this.stats.tickTime.start = Date.now();
         this.stats.tickTime.changed = true;
     }
+    drawDebugInfo() {
+        const avg = this.stats.drawTime.times.reduce((c,v) => c + v, 0) / this.stats.drawTime.times.length;
+
+        this.text.clearAll();
+        this.text.text(`\x1b[move 0;1 \x1b[foreColor #FFFFFF \x1b[backColor #00000000 
+\x1b[clearLine DT: ${this.stats.drawTime.time} (${avg})
+\x1b[clearLine FPS: ${Math.round(1 / this.stats.drawTime.time)} (${Math.round(1 / avg)})
+\x1b[clearLine Draw Count: ${this.render._drawList.length} (${this.render._allSkins.length})`);
+        this.text.strokeWidth = 0;
+        const height = 10;
+        const width = 32;
+        this.text.strokeWidth = (width / this.stats.maxTimes) * 6;
+        const max = this.stats.drawTime.times.reduce((c,v) => Math.max(c,1 / v), 0);
+        for (let i = 0, plot = this.stats.drawTime.times[i]; i < this.stats.drawTime.times.length; plot = this.stats.drawTime.times[++i]) {
+            const fps = 1 / plot;
+            const len = (fps / max) * height;
+            const rgb = hsvToRgb([(Math.min(fps / this.stats.idealFps, 1) * 128) / 360, .5, 1], []);
+            this.text.stroke = `rgb(${rgb})`;
+            this.text.line(Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, height + this.text.cursor[1], Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, (height + this.text.cursor[1]) - len);
+        }
+        this.text.strokeWidth = 0;
+        this.text.fill = '#0000FF';
+        this.text.rect(0, (height - (((1 / avg) / max) * height)) + this.text.cursor[1], width, 0.25);
+        this.text.fill = '#00FFFF';
+        const targetY = (height - ((this.stats.idealFps / max) * height)) + this.text.cursor[1];
+        if (targetY > this.text.cursor[1]) this.text.rect(0, targetY, width, 0.25);
+        this.text.cursor[1] += height;
+        this.text.cursor[0] = 0;
+        this.text.fill = '#00000000';
+        this.text.stroke = '#FFFFFF';
+        this.text.text(`
+\x1b[backColor #00FF00 Good FPS\x1b[reset \t\x1b[backColor #FF0000 Bad FPS\x1b[reset 
+\x1b[backColor #0000FF Average FPS \x1b[reset \t\x1b[backColor #00FFFF Ideal FPS\x1b[reset 
+not italic \x1b[italic italic
+        `)
+    }
     drawFrame() {
         if (this.stepping && !this.tiles.debug.enabled) {
             this.tiles.enableDebug();
@@ -522,8 +558,6 @@ class MainGame {
         this.tiles.draw();
         this.entities.draw();
         
-        this.text.cursor.set(this.window.cursorPos.x, this.window.cursorPos.y).div(6);
-        this.text.text('abcdefg hello world! this is a test the quick brown fox jumps over the lazy dog');
         if (this.settings)
             this.settings.draw();
 
@@ -534,7 +568,7 @@ class MainGame {
         if (this.window.getMouseButton(0)) {
             if (this.settings)
                 this.settings.fireClicks();
-            this.debugTiles.fireClicks();
+            // this.debugTiles.fireClicks();
         }
 
         this.stats.drawTime.time = (Date.now() - this.stats.drawTime.start) / 1000;
@@ -543,7 +577,8 @@ class MainGame {
             this.stats.drawTime.times.shift();
         this.stats.drawTime.start = Date.now();
         this.stats.drawTime.changed = true;
-        this.debugTiles.renderTiles();
+        // this.debugTiles.renderTiles();
+        this.drawDebugInfo();
     }
 }
 

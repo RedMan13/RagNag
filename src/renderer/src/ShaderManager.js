@@ -62,11 +62,11 @@ class ShaderManager {
             }
         }
 
-        const definesText = `${defines.join('\n')}\n`;
+        const definesText = `\n${defines.join('\n')}\n`;
 
         /* eslint-disable global-require */
-        const vsFullText = definesText + assets.get('sprite-vert');
-        const fsFullText = definesText + assets.get('sprite-frag');
+        const vsFullText = assets.get('sprite-vert').replace('\n', definesText);
+        const fsFullText = assets.get('sprite-frag').replace('\n', definesText);
         /* eslint-enable global-require */
 
         return twgl.createProgramInfo(this._gl, [vsFullText, fsFullText]);
@@ -197,13 +197,13 @@ ShaderManager.EFFECT_INFO = {
     tintWhites: {
         uniformName: 'u_tintWhite',
         mask: 1 << 15,
-        converter: x => ((x -1) >> 8) | (((x -1) & 0xFF) * 16777216),
+        converter: x => x -1,
         shapeChanges: false
     },
     tintBlacks: {
         uniformName: 'u_tintBlack',
         mask: 1 << 16,
-        converter: x => ((x -1) >> 8) | (((x -1) & 0xFF) * 16777216),
+        converter: x => x -1,
         shapeChanges: false
     },
     horizontalShear: {

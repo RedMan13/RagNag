@@ -28,7 +28,6 @@ if (process.env.DEVELOP && false != process.env.DEVELOP) {
             game._initKeys();
             game._initRenderer();
             game._initTileSpace();
-            game._initDebugTiles();
             game.start()
         });
 } else {
@@ -123,7 +122,6 @@ if (process.env.DEVELOP && false != process.env.DEVELOP) {
         .then(() => {
             game._initKeys();
             game._initTileSpace();
-            game._initDebugTiles();
             game.start();
         });
 }

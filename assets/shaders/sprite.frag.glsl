@@ -1,3 +1,4 @@
+#version 300 es
 precision mediump float;
 
 #ifdef DRAW_MODE_elipse
@@ -73,7 +74,7 @@ uniform float u_opaque;
 uniform float u_saturation;
 #endif // ENABLE_saturation
 #ifdef ENABLE_tintColor
-uniform highp float u_tintColor;
+uniform highp int u_tintColor;
 #endif // ENABLE_tintColor
 #if defined(ENABLE_repeatX)
 uniform float u_repeatX;
@@ -82,16 +83,16 @@ uniform float u_repeatX;
 uniform float u_repeatY;
 #endif
 #ifdef ENABLE_tintWhites
-uniform float u_tintWhite;
+uniform highp int u_tintWhite;
 #endif
 #ifdef ENABLE_tintBlacks
-uniform float u_tintBlack;
+uniform highp int u_tintBlack;
 #endif
 
 #ifdef DRAW_MODE_line
-varying vec4 v_lineColor;
-varying float v_lineThickness;
-varying float v_lineLength;
+in vec4 v_lineColor;
+in float v_lineThickness;
+in float v_lineLength;
 #endif // DRAW_MODE_line
 
 #ifdef DRAW_MODE_background
@@ -101,7 +102,7 @@ uniform vec4 u_backgroundColor;
 uniform sampler2D u_skin;
 
 #ifndef DRAW_MODE_background
-varying vec2 v_texCoord;
+in vec2 v_texCoord;
 #endif
 
 // Add this to divisors to prevent division by 0, which results in NaNs propagating through calculations.
@@ -165,17 +166,18 @@ vec3 convertHSV2RGB(vec3 hsv)
 	return rgb * c + hsv.z - c;
 }
 
-vec4 decimalToRGB(highp float decimalColor) {
-	highp float blue = mod(decimalColor, 256.0) / 255.0;
-	highp float green = mod(floor(decimalColor / 256.0), 256.0) / 255.0;
-	highp float red = mod(floor(decimalColor / 65536.0), 256.0) / 255.0;
-	highp float alpha = mod(floor(decimalColor / 16777216.0), 256.0) / 255.0;
+vec4 decimalToRGB(highp int decimalColor) {
+	highp float blue = float(decimalColor & 0xFF) / 255.0;
+	highp float green = float((decimalColor >> 8) & 0xFF) / 255.0;
+	highp float red = float((decimalColor >> 16) & 0xFF) / 255.0;
+	highp float alpha = float((decimalColor >> 24) & 0xFF) / 255.0;
 
 	return vec4(red, green, blue, alpha);
 }
 #endif // !defined(DRAW_MODE_silhouette) && (defined(ENABLE_color) || defined(ENABLE_saturation) || defined(ENABLE_tintColor))
 
 const vec2 kCenter = vec2(0.5, 0.5);
+out vec4 outColor;
 
 void main()
 {
@@ -241,16 +243,16 @@ void main()
 		float alpha = 0.0;
 		vec2 pos = (texcoord0 * u_skinSize) - vec2(1,1);
 		if (pos.x <= u_outlineThickness)
-			alpha += 1;
+			alpha += 1.0;
 		else if (pos.x >= (u_skinSize.x - u_outlineThickness))
-			alpha += 1;
+			alpha += 1.0;
 		else if (pos.y <= u_outlineThickness)
-			alpha += 1;
+			alpha += 1.0;
 		else if (pos.y >= (u_skinSize.y - u_outlineThickness))
-			alpha += 1;
-		color = merge(vec4(u_outlineColor.rgb, alpha * u_outlineColor.a), color);
+			alpha += 1.0;
+		color = merge(vec4(u_outlineColor.rgb, min(alpha * u_outlineColor.a, 1.0)), color);
 	}
-	gl_FragColor = color;
+	outColor = color;
 	#endif
 	#ifdef DRAW_MODE_elipse
 	vec4 color = u_fillColor;
@@ -261,8 +263,8 @@ void main()
 		float dist = sqrt((dif.x * dif.x) + (dif.y * dif.y));
 		float dir = atan(dif.y, dif.x) + PI;
 		if (dist <= 0.5 && dir >= u_elipseStart && dir <= u_elipseEnd)
-			alpha += 1;
-		color = vec4(u_fillColor.rgb, alpha * u_fillColor.a);
+			alpha += 1.0;
+		color = vec4(u_fillColor.rgb, min(alpha * u_fillColor.a, 1.0));
 	}
 	if (u_outlineThickness > 0.0 && u_outlineColor.a > 0.0) {
 		alpha = 0.0;
@@ -271,23 +273,23 @@ void main()
 		float dir = atan(dif.y, dif.x) + PI;
 		float dire = abs((HALF_PI - abs(atan(dif.y, dif.x))) / HALF_PI);
 		if (dist <= 0.5 && dist >= (0.5 - (u_outlineThickness / ((u_skinSize.x * dire) + (u_skinSize.y * (1.0- dire))))) && dir >= u_elipseStart && dir <= u_elipseEnd)
-			alpha += 1;
-		color = merge(vec4(u_outlineColor.rgb, alpha * u_outlineColor.a), color);
+			alpha += 1.0;
+		color = merge(vec4(u_outlineColor.rgb, min(alpha * u_outlineColor.a, 1.0)), color);
 	}
-	gl_FragColor = color;
+	outColor = color;
 	#endif
 	#ifdef DRAW_MODE_default
-	gl_FragColor = texture2D(u_skin, texcoord0);
+	outColor = texture2D(u_skin, texcoord0);
 	#endif
 
 	#if defined(ENABLE_color) || defined(ENABLE_brightness) || defined(ENABLE_saturation) || defined(ENABLE_tintColor)
 	// Divide premultiplied alpha values for proper color processing
 	// Add epsilon to avoid dividing by 0 for fully transparent pixels
-	gl_FragColor.rgb = clamp(gl_FragColor.rgb / (gl_FragColor.a + epsilon), 0.0, 1.0);
+	outColor.rgb = clamp(outColor.rgb / (outColor.a + epsilon), 0.0, 1.0);
 
 	#ifdef ENABLE_color
 	{
-		vec3 hsv = convertRGB2HSV(gl_FragColor.xyz);
+		vec3 hsv = convertRGB2HSV(outColor.xyz);
 
 		// this code forces grayscale values to be slightly saturated
 		// so that some slight change of hue will be visible
@@ -303,17 +305,17 @@ void main()
 		hsv.x = mod(hsv.x + u_color, 1.0);
 		if (hsv.x < 0.0) hsv.x += 1.0;
 
-		gl_FragColor.rgb = convertHSV2RGB(hsv);
+		outColor.rgb = convertHSV2RGB(hsv);
 	}
 	#endif // ENABLE_color
 	
 	#ifdef ENABLE_saturation
 	{
-		vec3 hsv = convertRGB2HSV(gl_FragColor.xyz);
+		vec3 hsv = convertRGB2HSV(outColor.xyz);
 
 		hsv.y *= u_saturation;
 
-		gl_FragColor.rgb = convertHSV2RGB(hsv);
+		outColor.rgb = convertHSV2RGB(hsv);
 	}
 	#endif // ENABLE_saturation
 	
@@ -321,64 +323,70 @@ void main()
 	{
 		vec4 tintRgb = decimalToRGB(u_tintColor);
 
-		gl_FragColor *= tintRgb;
+		outColor *= tintRgb;
 	}
 	#endif // ENABLE_tintColor
 
 	#ifdef ENABLE_brightness
-	gl_FragColor.rgb = clamp(gl_FragColor.rgb + vec3(u_brightness), vec3(0), vec3(1));
+	outColor.rgb = clamp(outColor.rgb + vec3(u_brightness), vec3(0), vec3(1));
 	#endif // ENABLE_brightness
 
 	// Re-multiply color values
-	gl_FragColor.rgb *= gl_FragColor.a + epsilon;
+	outColor.rgb *= outColor.a + epsilon;
 
 	#endif // defined(ENABLE_color) || defined(ENABLE_brightness) || defined(ENABLE_saturation) || defined(ENABLE_tintColor)
 
 	#ifdef ENABLE_ghost
-	gl_FragColor *= u_ghost;
+	outColor *= u_ghost;
 	#endif // ENABLE_ghost
 	
 	#ifdef ENABLE_red
-	gl_FragColor.r *= u_red;
+	outColor.r *= u_red;
 	#endif // ENABLE_red
 	
 	#ifdef ENABLE_green
-	gl_FragColor.g *= u_green;
+	outColor.g *= u_green;
 	#endif // ENABLE_green
 	
 	#ifdef ENABLE_blue
-	gl_FragColor.b *= u_blue;
+	outColor.b *= u_blue;
 	#endif // ENABLE_blue
 	
 	#ifdef ENABLE_opaque
-	gl_FragColor.a *= u_opaque;
+	outColor.a *= u_opaque;
 	#endif // ENABLE_opaque
 
-	#ifdef ENABLE_tintWhites
+	#if defined(ENABLE_tintBlacks) || defined(ENABLE_tintWhites)
 	{
-		vec4 tintRgb = decimalToRGB(u_tintWhite);
-		gl_FragColor *= tintRgb;
-	}
-	#endif
+		vec4 color = outColor;
+		#ifdef ENABLE_tintWhites
+		{
+			vec4 tintRgb = decimalToRGB(u_tintWhite);
+			color = tintRgb * outColor;
+		}
+		#endif
 
-	#ifdef ENABLE_tintBlacks
-	{
-		vec4 tintRgb = decimalToRGB(u_tintBlack);
-		gl_FragColor = (vec4(1,1,1,1) - gl_FragColor) * tintRgb;
+		#ifdef ENABLE_tintBlacks
+		{
+			vec4 tintRgb = decimalToRGB(u_tintBlack);
+			color = ((vec4(1,1,1,1) - outColor) * tintRgb) + color;
+		}
+		#endif
+		outColor = color;
 	}
 	#endif
 
 	#ifdef DRAW_MODE_silhouette
 	// Discard fully transparent pixels for stencil test
-	if (gl_FragColor.a == 0.0) {
+	if (outColor.a == 0.0) {
 		discard;
 	}
 	// switch to u_silhouetteColor only AFTER the alpha test
-	gl_FragColor = u_silhouetteColor;
+	outColor = u_silhouetteColor;
 	#else // DRAW_MODE_silhouette
 
 	#ifdef DRAW_MODE_colorMask
-	vec3 maskDistance = abs(gl_FragColor.rgb - u_colorMask);
+	vec3 maskDistance = abs(outColor.rgb - u_colorMask);
 	vec3 colorMaskTolerance = vec3(u_colorMaskTolerance, u_colorMaskTolerance, u_colorMaskTolerance);
 	if (any(greaterThan(maskDistance, colorMaskTolerance)))
 	{
@@ -389,7 +397,7 @@ void main()
 
 	#ifdef DRAW_MODE_straightAlpha
 	// Un-premultiply alpha.
-	gl_FragColor.rgb /= gl_FragColor.a + epsilon;
+	outColor.rgb /= outColor.a + epsilon;
 	#endif
 
 	#endif // !(defined(DRAW_MODE_line) || defined(DRAW_MODE_background))
@@ -411,13 +419,13 @@ void main()
 	line -= ((v_lineThickness - 1.0) * 0.5);
 	// Because "distance to the center of the line" decreases the closer we get to the line, but we want more opacity
 	// the closer we are to the line, invert it.
-	gl_FragColor = v_lineColor * clamp(1.0 - line, 0.0, 1.0);
+	outColor = v_lineColor * clamp(1.0 - line, 0.0, 1.0);
 	#endif // DRAW_MODE_line
 
 	#ifdef DRAW_MODE_background
-	gl_FragColor = u_backgroundColor;
+	outColor = u_backgroundColor;
 	#endif
 
 	// premult hint doesnt seem to do anything, so just always statically premultiply
-	gl_FragColor = vec4(gl_FragColor.rgb * gl_FragColor.a, gl_FragColor.a);
+	outColor = vec4(outColor.rgb * outColor.a, outColor.a);
 }
