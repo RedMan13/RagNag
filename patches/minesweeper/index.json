@@ -13,6 +13,8 @@
         ["splice", ["drawFrame() {",0], ["if (this.settings)",0], "index.js", "this.minesweeper.tick();"],
         ["splice", ["if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return", -69],[";", 1], "index.js", ""],
         ["splice", ["this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]]", -54],[";", 0], "index.js", "this.minesweeper.uncover(this.cursor.pos[0],this.cursor.pos[1])"],
-        ["splice", ["drawPhysics() {", 0], ["\n    }", 0], "index.js", ""]
+        ["splice", ["this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = { type: 0 }", -3], 1, "index.js", "TileSpace.tiles.flagged"],
+        ["splice", ["drawPhysics() {", 0], ["\n    }", 0], "index.js", ""],
+        ["splice", ["this.render.setBackgroundColor(M", -32], [";", 1], "index.js", ""]
     ]
 }

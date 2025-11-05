@@ -12,8 +12,8 @@ class MineSweeper {
         this.grid = grid;
         grid.resizeWorld(20, 20);
         grid.wrap = false;
-        grid.camera.pos[0] = -((grid.screenWh[0] - grid.wh[0]) * grid.tileWh[0]) / 2;
-        grid.camera.pos[1] = -((grid.screenWh[1] - grid.wh[0]) * grid.tileWh[0]) / 2;
+        grid.camera.pos[0] = (grid.wh[0] * grid.tileWh[0]) / 2;
+        grid.camera.pos[1] = (grid.wh[1] * grid.tileWh[1]) / 2;
         this.loadAssets();
         this.grid.map = new Array(grid.wh[0]).fill([]).map(() => new Array(grid.wh[1]).fill([0]).map(() => ({ type: TileSpace.tiles.unopened })));
         this.map = new Array(grid.wh[0]).fill([]).map(() => new Array(grid.wh[1]).fill([0]).map(() => TileSpace.tiles.bombs0));
@@ -65,7 +65,7 @@ class MineSweeper {
         if (this.map[x][y] === TileSpace.tiles.bomb) {
             for (let x = 0; x < this.grid.wh[0]; x++)
                 for (let y = 0; y < this.grid.wh[1]; y++)
-                    if (this.map[x][y] === TileSpace.tiles.bomb)
+                    if (this.map[x][y] === TileSpace.tiles.bomb && this.grid.map[x][y].type !== TileSpace.tiles.flagged)
                         this.grid.map[x][y].type = TileSpace.tiles.bomb;
             return;
         }

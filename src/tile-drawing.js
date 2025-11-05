@@ -288,7 +288,10 @@ class TileSpace {
                                 .add(this.camera.pos.clone().div(this.tileWh).clamp(1))
                                 .mod([this.wh[0], Infinity])
                                 .clamp(1)
-                            : p.clone().add(this.camera.pos.clone().div(this.tileWh).clamp(1)).clamp(1);
+                            : p.clone()
+                                .sub(this.screenWh.clone().div(2))
+                                .add(this.camera.pos.clone().div(this.tileWh).clamp(1))
+                                .clamp(1);
                         return {
                             type: this.map[mapPos[0]]?.[mapPos[1]]?.type ?? 0, 
                             displayPos: p,

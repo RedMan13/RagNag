@@ -386,7 +386,7 @@ class MainGame {
         console.text = this.text;
         this.entities = new Physics(this.tiles, this.render);
         this.entities.loadAssets(this.assets);
-        this.player = this.entities.createEntity(0,0, 'player');
+        this.player = this.entities.createEntity(this.tiles.tileWh[0] * 2,this.tiles.tileWh[1] * 3, 'player');
         console.log('Loading save file...');
         fs.readFile('./save.json', 'utf8', (err, data) => {
             if (err) return console.log('No save file present!');
@@ -439,6 +439,15 @@ class MainGame {
             if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return;
             this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = { type: this.cursor.tile };
         }, 'Sets the type of the currently hovered tile to the selected type'];
+        keys['Clear Tile']            = [[names.MouseRight], false, () => {
+            if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return;
+            this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = { type: 0 };
+        }, 'Sets the type of the currently hovered tile to empty'];
+        this.window.on('wheel', ({ deltaX }) => {
+            if (deltaX === 0) return;
+            this.cursor.tile += Math.sign(deltaX) / 2;
+            this.cursor.tile = Math.max(this.cursor.tile, 1);
+        })
         keys['Save Map']              = [[names.ControlLeft, names.S], true, () => {
             console.log('Saving game...');
             fs.writeFile('./save.json', JSON.stringify(this.tiles.map), err => { if (err) throw err; console.log('Saved!'); })
@@ -560,22 +569,26 @@ Tick Count: ${this.entities.entities.length}`);
             this.tiles.enableDebug();
             this.entities.enableDebug();
         }
-        const target = this.entities.entities[this.player].pos.clone();
-        this.render.setBackgroundColor(Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.384313725, 0.384313725), Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.670588235, 0.670588235), ((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.858823529, 1);
-        const distance = target.clone().scale(-1,1).sub(this.tiles.camera.pos);
-        if (!this.movingPlayer) {
-            this.tiles.camera.pos = this.camOff.clone()
-                .add(this.tiles.camera.pos)
-                .add(distance.mul(0.20));
-        }
+        
         this.movingPlayer = false;
         this.tiles.draw();
         this.entities.draw();
         if (this.settings)
             this.settings.draw();
 
+        const target = this.entities.entities[this.player].pos.clone();
+        this.render.setBackgroundColor(Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.384313725, 0.384313725), Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.670588235, 0.670588235), ((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.858823529, 1);
+        const distance = target.clone().scale(-1,1).sub(this.tiles.camera.pos);
+        if (!this.movingPlayer) {
+            this.tiles.camera.pos = this.camOff.clone()
+                .sub(this.tiles.screenWh.clone().div(2))
+                .add(this.tiles.camera.pos)
+                .add(distance.mul(0.20));
+        }
+
         const screenPos = this.tiles.screenToWorld(this.window.cursorPos.x, this.window.cursorPos.y);
         this.cursor.pos = screenPos.clone()
+            .sub(this.tiles.screenWh.clone().div(2))
             .add(this.tiles.camera.pos.clone().div(this.tiles.tileWh))
             .clamp(1);
         if (this.tiles.wrap) this.cursor.pos
@@ -583,7 +596,7 @@ Tick Count: ${this.entities.entities.length}`);
         if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]])
             this.render.updateDrawableVisible(this.cursor.draw, false);
         else
-            this.tiles.updateTileDrawable(this.cursor.draw, screenPos, [this.cursor.tile]);
+            this.tiles.updateTileDrawable(this.cursor.draw, screenPos, { type: this.cursor.tile });
 
         // draw frame
         this.render.draw();
