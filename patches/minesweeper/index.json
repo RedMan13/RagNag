@@ -1,14 +1,18 @@
 {
-    "name": "Pong",
-    "description": "Converts the entire game into Pong!",
+    "name": "Minesweeper",
+    "description": "Converts the entire game into Minesweeper!",
     "author": "RedMan13",
-    "version": "1.0",
+    "version": "1.6",
     "changes": [
         ["copy", "./game.js", "minesweeper.js"],
         ["splice", 0,0, "index.js", "const minesweeper = require('./minesweeper.js');\n"],
-        ["splice", 2503,8939, "index.js", ""],
-        ["splice", 9270,9512, "index.js", "this.minesweeper = new minesweeper(this.render, this.window, this.tiles);"],
-        ["splice", 11754,11830, "index.js", "this.minesweeper.uncover(this.cursor.pos[0],this.cursor.pos[1])"],
-        ["splice", 14432,15088, "index.js", ""]
+        ["splice", ["_initDebugTiles() {",0], ["\n    }",0], "index.js", ""],
+        ["splice", ["this.debugTiles.width",0], [";",0], "index.js", ""],
+        ["splice", ["this.debugTiles.height",0], [";",0], "index.js", ""],
+        ["splice", ["fs.readFile('./save.json'", -25], ["});",3], "index.js", "\nthis.minesweeper = new minesweeper(this.render, this.window, this.tiles);"],
+        ["splice", ["drawFrame() {",0], ["if (this.settings)",0], "index.js", "this.minesweeper.tick();"],
+        ["splice", ["if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return", -69],[";", 1], "index.js", ""],
+        ["splice", ["this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]]", -54],[";", 0], "index.js", "this.minesweeper.uncover(this.cursor.pos[0],this.cursor.pos[1])"],
+        ["splice", ["drawPhysics() {", 0], ["\n    }", 0], "index.js", ""]
     ]
 }

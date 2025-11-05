@@ -1,4 +1,18 @@
 /**
+ * String.prototype.indexOf, but it returns NaN not -1 on failure
+ * @param {string} str The string to check in
+ * @param {string} key The vaue to search for
+ * @param {number?} offset The offset into the string to start from
+ * @returns {number} The index of the key, or NaN if no instances where found
+ */
+const _lastIndexNaN = (str, key, offset = Infinity) => {
+    if (!str) return NaN;
+    const val = str.lastIndexOf(key, offset);
+    if (val === -1) return NaN;
+    return val;
+};
+const browserHasStack = !!new Error().stack;
+/**
  * @typedef {'log'|'info'|'debug'|'warn'|'error'} LogType
  */
 /**
@@ -18,11 +32,6 @@
  * @prop {StackTrace[]} trace 
  */
 class InternalConsole extends console.Console {
-    /** @type {LogItem[]} */
-    logs = [];
-    logRollover = 40;
-    /** @type {import('./renderer/src/RenderWebGL')} */
-    render = null;
     static matchSubstitution = /%((?<type>[oOdisfc])|\.(?<precision>[0-9]+)f)/g;
     /**
      * Parses cromium error stacks, taken from penguinmod.github.io/src/lib/pm-log-capture.js
@@ -74,9 +83,15 @@ class InternalConsole extends console.Console {
                 };
             });
     }
-    constructor(render) {
-        super();
-        this.render = render;
+
+    /** @type {LogItem[]} */
+    logs = [];
+    logRollover = 360;
+    /** @type {import('./text-layer')} must be set once created */
+    text = null;
+    visible = false;
+    constructor() {
+        super(process.stdout);
     }
     /**
      * Creates and appends a new log item to the list of logs
@@ -130,18 +145,32 @@ class InternalConsole extends console.Console {
         this.logs.push({
             type,
             content: content
-                .reduce((c,v) => (typeof c.at(-1) !== 'object' && typeof v !== 'object'
-                    ? c[c.length -1] += v
+                .reduce((c,v) => (typeof c.at(-1) !== 'object' && typeof c.at(-1) !== 'undefined' && typeof v !== 'object'
+                    ? c[c.length -1] += ' ' + v
                     : c.push(v), c), []),
             trace: InternalConsole._parseChromeStack(error.stack)
         });
         if (this.logs.length > this.logRollover) this.logs.shift();
+        if (this.visible) {
+            this.text.text('\n' + this.logs.at(-1).content.join(' '));
+        }
     }
     log(...args) { super.log(...args); this._appendLog('log', args, new Error('trace')); }
     info(...args) { super.info(...args); this._appendLog('info', args, new Error('trace')); }
     debug(...args) { super.debug(...args); this._appendLog('debug', args, new Error('trace')); }
     warn(...args) { super.warn(...args); this._appendLog('warn', args, new Error('trace')); }
     error(...args) { super.error(...args); this._appendLog('error', args, new Error('trace')); }
+
+    hide() {
+        this.text.clearAll();
+        this.visible = false;
+    }
+    show() {
+        this.visible = true;
+        this.text.text(`\x1b[move 0;0 \x1b[foreColor #FFF \x1b[backColor #0009 \x1b[clearall 
+what the logs doin
+${this.logs.map(log => log.content).join('\n')}`);
+    }
 }
 
 module.exports = InternalConsole;

@@ -383,17 +383,19 @@ class MainGame {
         this.tiles.loadAssets(this.assets);
         this.text = new TextLayer(this.window, this.render, 6,6, 200, 200, true);
         this.text.loadAssets(this.assets);
+        console.text = this.text;
         this.entities = new Physics(this.tiles, this.render);
         this.entities.loadAssets(this.assets);
-        this.player = this.entities.createEntity(180,180, 'player');
+        this.player = this.entities.createEntity(0,0, 'player');
+        console.log('Loading save file...');
         fs.readFile('./save.json', 'utf8', (err, data) => {
-            if (err) return;
-            if (data.length < 2) return;
+            if (err) return console.log('No save file present!');
+            if (data.length < 2) return console.log('Invalid save file, aborting load.');
             this.tiles.map = JSON.parse(data);
+            console.log('Save loaded!');
         });
     }
     _initKeys() {
-        let jumped = false;
         keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.render, window), 'Opens the settings and exit menu'];
         keys['Camera Left']           = [[names.A],         false, () => this.camOff[0] -= 200 * this.stats.drawTime.time, 'Moves the debug/painting camera left'];
         keys['Camera Right']          = [[names.D],         false, () => this.camOff[0] += 200 * this.stats.drawTime.time, 'Moves the debug/painting camera right'];
@@ -435,13 +437,17 @@ class MainGame {
         }, 'Makes the player move right'];
         keys['Place Tile']            = [[names.MouseLeft], false, () => {
             if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return;
-            this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = [this.cursor.tile];
+            this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = { type: this.cursor.tile };
         }, 'Sets the type of the currently hovered tile to the selected type'];
-        keys['Save Map']              = [[names.ControlLeft, names.S], false, () => fs.writeFile('./save.json', JSON.stringify(this.tiles.map), err => { if (err) throw err; }), 'Saves the current map data into save.json'];
+        keys['Save Map']              = [[names.ControlLeft, names.S], true, () => {
+            console.log('Saving game...');
+            fs.writeFile('./save.json', JSON.stringify(this.tiles.map), err => { if (err) throw err; console.log('Saved!'); })
+        }, 'Saves the current map data into save.json'];
         keys['Step Physics']          = [[names.Z],         true, () => {
             this.stepping = true;
             this.drawPhysics();
-        }];
+        }, 'When pressed, makes the physics only be ticked when the key is pressed'];
+        keys['Open Console']          = [[names.Backquote], true, () => console.visible ? console.hide() : console.show(), 'Showa/hides the console.'];
     }
     async loadAssets() {
         await Promise.all([
@@ -457,19 +463,7 @@ class MainGame {
             this.assets.registerAsset('bottom', 'tiles/bottom.svg'),
             this.assets.registerAsset('bottom-left', 'tiles/bottom-left.svg'),
             this.assets.registerAsset('left', 'tiles/left.svg'),
-
-            this.assets.registerAsset('unopened', 'tiles/unopened.png'),
-            this.assets.registerAsset('flagged', 'tiles/flagged.png'),
-            this.assets.registerAsset('zero-bombs', 'tiles/0-bombs.png'),
-            this.assets.registerAsset('one-bomb', 'tiles/1-bombs.png'),
-            this.assets.registerAsset('two-bombs', 'tiles/2-bombs.png'),
-            this.assets.registerAsset('three-bombs', 'tiles/3-bombs.png'),
-            this.assets.registerAsset('four-bombs', 'tiles/4-bombs.png'),
-            this.assets.registerAsset('five-bombs', 'tiles/5-bombs.png'),
-            this.assets.registerAsset('six-bombs', 'tiles/6-bombs.png'),
-            this.assets.registerAsset('seven-bombs', 'tiles/7-bombs.png'),
-            this.assets.registerAsset('eight-bombs', 'tiles/8-bombs.png'),
-            this.assets.registerAsset('bomb', 'tiles/bomb.png'),
+            
             ...(new Array(256).fill(0)
                 .map((_,i) => this.assets.registerAsset(`char-${i}`, `tiles/text/tile${i.toString().padStart(3, '0')}.png`))),
 
@@ -496,70 +490,100 @@ class MainGame {
         this.stats.tickTime.changed = true;
     }
     drawDebugInfo() {
-        const avg = this.stats.drawTime.times.reduce((c,v) => c + v, 0) / this.stats.drawTime.times.length;
+        if (console.visible) return;
+        const avgDraw = this.stats.drawTime.times.reduce((c,v) => c + v, 0) / this.stats.drawTime.times.length;
 
-        this.text.clearAll();
-        this.text.text(`\x1b[move 0;1 \x1b[foreColor #FFFFFF \x1b[backColor #00000000 
-\x1b[clearLine DT: ${this.stats.drawTime.time} (${avg})
-\x1b[clearLine FPS: ${Math.round(1 / this.stats.drawTime.time)} (${Math.round(1 / avg)})
-\x1b[clearLine Draw Count: ${this.render._drawList.length} (${this.render._allSkins.length})`);
+        this.text.text(`\x1b[move 0;0 \x1b[foreColor #FFFFFF \x1b[backColor #00000000 DT: ${this.stats.drawTime.time} (${avgDraw})
+FPS: ${Math.round(1 / this.stats.drawTime.time)} (${Math.round(1 / avgDraw)})
+Draw Count: ${this.render._drawList.length} (${this.render._allSkins.length})`);
         this.text.strokeWidth = 0;
+        this.text.cursor[0] = 0;
         const height = 10;
         const width = 32;
+        this.text.clearArea(this.text.cursor[0], this.text.cursor[1], width, height);
         this.text.strokeWidth = (width / this.stats.maxTimes) * 6;
+        const capOff = (this.text.strokeWidth / 2) / TextLayer.tileSize[1];
         const max = this.stats.drawTime.times.reduce((c,v) => Math.max(c,1 / v), 0);
         for (let i = 0, plot = this.stats.drawTime.times[i]; i < this.stats.drawTime.times.length; plot = this.stats.drawTime.times[++i]) {
             const fps = 1 / plot;
-            const len = (fps / max) * height;
+            const len = ((fps / max) * (height -1)) - capOff;
             const rgb = hsvToRgb([(Math.min(fps / this.stats.idealFps, 1) * 128) / 360, .5, 1], []);
             this.text.stroke = `rgb(${rgb})`;
-            this.text.line(Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, height + this.text.cursor[1], Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, (height + this.text.cursor[1]) - len);
+            this.text.line(Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, height + this.text.cursor[1] - capOff, Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, (height + this.text.cursor[1]) - len);
         }
         this.text.strokeWidth = 0;
         this.text.fill = '#0000FF';
-        this.text.rect(0, (height - (((1 / avg) / max) * height)) + this.text.cursor[1], width, 0.25);
+        this.text.rect(0, (height - (((1 / avgDraw) / max) * height)) + this.text.cursor[1], width, 0.25);
         this.text.fill = '#00FFFF';
         const targetY = (height - ((this.stats.idealFps / max) * height)) + this.text.cursor[1];
         if (targetY > this.text.cursor[1]) this.text.rect(0, targetY, width, 0.25);
+        this.text.cursor[1] += height +1;
+        this.text.cursor[0] = 0;
+        this.text.fill = '#00000000';
+        this.text.stroke = '#000000';
+
+        const avgTick = this.stats.tickTime.times.reduce((c,v) => c + v, 0) / this.stats.tickTime.times.length;
+
+        this.text.text(`\x1b[foreColor #FFFFFF \x1b[backColor #00000000 DT: ${this.stats.tickTime.time} (${avgTick})
+TPS: ${Math.round(1 / this.stats.tickTime.time)} (${Math.round(1 / avgTick)})
+Tick Count: ${this.entities.entities.length}`);
+        this.text.strokeWidth = 0;
+        this.text.strokeWidth = (width / this.stats.maxTimes) * 6;
+        this.text.cursor[0] = 0;
+        this.text.clearArea(this.text.cursor[0], this.text.cursor[1], width, height);
+        const maxTick = this.stats.tickTime.times.reduce((c,v) => Math.max(c,1 / v), 0);
+        for (let i = 0, plot = this.stats.tickTime.times[i]; i < this.stats.tickTime.times.length; plot = this.stats.tickTime.times[++i]) {
+            const fps = 1 / plot;
+            const len = ((fps / maxTick) * (height -1)) - capOff;
+            const rgb = hsvToRgb([(Math.min(fps / this.stats.idealFps, 1) * 128) / 360, .5, 1], []);
+            this.text.stroke = `rgb(${rgb})`;
+            this.text.line(Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, height + this.text.cursor[1] - capOff, Math.floor(((i / this.stats.maxTimes) * width) * 6) / 6, (height + this.text.cursor[1]) - len);
+        }
+        this.text.strokeWidth = 0;
+        this.text.fill = '#0000FF';
+        this.text.rect(0, (height - (((1 / avgTick) / maxTick) * height)) + this.text.cursor[1], width, 0.25);
+        this.text.fill = '#00FFFF';
+        const targetTickY = (height - ((this.stats.idealFps / maxTick) * height)) + this.text.cursor[1];
+        if (targetTickY > this.text.cursor[1]) this.text.rect(0, targetTickY, width, 0.25);
         this.text.cursor[1] += height;
         this.text.cursor[0] = 0;
         this.text.fill = '#00000000';
-        this.text.stroke = '#FFFFFF';
+        this.text.stroke = '#000000';
         this.text.text(`
-\x1b[backColor #00FF00 Good FPS\x1b[reset \t\x1b[backColor #FF0000 Bad FPS\x1b[reset 
-\x1b[backColor #0000FF Average FPS \x1b[reset \t\x1b[backColor #00FFFF Ideal FPS\x1b[reset 
-not italic \x1b[italic italic
-        `)
+\x1b[backColor #80ff91 Good FPS\x1b[reset \t\x1b[backColor #ff8080 Bad FPS\x1b[reset 
+\x1b[backColor #0000FF Average FPS\x1b[reset \t\x1b[backColor #00FFFF Ideal FPS\x1b[reset 
+        `);
     }
     drawFrame() {
+        this.drawDebugInfo();
         if (this.stepping && !this.tiles.debug.enabled) {
             this.tiles.enableDebug();
             this.entities.enableDebug();
         }
+        const target = this.entities.entities[this.player].pos.clone();
+        this.render.setBackgroundColor(Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.384313725, 0.384313725), Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.670588235, 0.670588235), ((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.858823529, 1);
+        const distance = target.clone().scale(-1,1).sub(this.tiles.camera.pos);
+        if (!this.movingPlayer) {
+            this.tiles.camera.pos = this.camOff.clone()
+                .add(this.tiles.camera.pos)
+                .add(distance.mul(0.20));
+        }
+        this.movingPlayer = false;
+        this.tiles.draw();
+        this.entities.draw();
+        if (this.settings)
+            this.settings.draw();
+
         const screenPos = this.tiles.screenToWorld(this.window.cursorPos.x, this.window.cursorPos.y);
         this.cursor.pos = screenPos.clone()
             .add(this.tiles.camera.pos.clone().div(this.tiles.tileWh))
-            .sub(this.tiles.screenWh.clone().div(2))
-            .clamp(1)
+            .clamp(1);
+        if (this.tiles.wrap) this.cursor.pos
             .mod([this.tiles.wh[0], Infinity]);
         if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]])
             this.render.updateDrawableVisible(this.cursor.draw, false);
         else
             this.tiles.updateTileDrawable(this.cursor.draw, screenPos, [this.cursor.tile]);
-        const target = this.entities.entities[this.player].pos.clone();
-        this.render.setBackgroundColor(Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.384313725, 0.384313725), Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.670588235, 0.670588235), ((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.858823529, 1);
-        const distance = target.clone().scale(-1,1).sub(this.tiles.camera.pos);
-        if (!this.movingPlayer && !this.stepping) {
-            this.tiles.camera.pos = this.camOff.clone()
-                .add(this.tiles.camera.pos)
-                .add(distance.mul(0.20));
-        } else this.tiles.camera.pos = this.camOff.clone();
-        this.movingPlayer = false;
-        this.tiles.draw();
-        this.entities.draw();
-        
-        if (this.settings)
-            this.settings.draw();
 
         // draw frame
         this.render.draw();
@@ -578,7 +602,6 @@ not italic \x1b[italic italic
         this.stats.drawTime.start = Date.now();
         this.stats.drawTime.changed = true;
         // this.debugTiles.renderTiles();
-        this.drawDebugInfo();
     }
 }
 

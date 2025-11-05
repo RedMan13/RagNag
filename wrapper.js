@@ -7,6 +7,8 @@ global.window.ImageData = ImageData;
 global.self = global;
 global.ImageData = ImageData;
 const { init: initFrame } = require("3d-core-raub");
+// this *does* mean it cant be modified at all, but it does also mean logs are more appropriately captured
+global.console = new (require('./src/console.js'))();
 
 const { window, canvas } = initFrame({
     isWebGL2: true,
@@ -17,31 +19,23 @@ const { window, canvas } = initFrame({
 const icon = new Image('./icon.png');
 icon.onload = () => window.icon = icon;
 window.ImageData = ImageData;
-if (process.env.DEVELOP && false != process.env.DEVELOP) {
-    // load from source, without mixing in anything
-    // that includes try/catch, we specifically want errors to drop out of the app entirely
-    const MainGame = require('./src/index.js');
-    const game = new MainGame(window, canvas);
-    global.assets = game.assets;
-    game.loadAssets()
-        .then(() => {
-            game._initKeys();
-            game._initRenderer();
-            game._initTileSpace();
-            game.start()
-        });
-} else {
+const isDevelop = process.env.DEVELOP && false != process.env.DEVELOP;
+if (isDevelop) console.log('Launching from source.');
+const sourcesToAdd = [];
+const patchs = [];
+if (!isDevelop) {
     fs.cpSync('./src', './run', { recursive: true });
 
     // vondy
     const enabled = require('./enabled-patches.json');
     const source = path.resolve('./run');
-    const patchs = [];
     /** @type {{ [file: string]: [number, number, string] }} */
     const splices = {};
     for (const name of fs.readdirSync('./patches')) {
         if (!enabled.includes(name)) continue;
+        console.log('Installing patch', name);
         const root = path.resolve('./patches', name);
+        sourcesToAdd.push([path.resolve(root, 'assets'), enabled.indexOf(name)]);
         const structure = require(path.resolve(root, 'index.json'));
         patchs.push(structure);
         for (const [type, ...args] of structure.changes) {
@@ -82,46 +76,57 @@ if (process.env.DEVELOP && false != process.env.DEVELOP) {
     }
     for (const file in splices) {
         let data = fs.readFileSync(file, 'utf8');
-        let align = 0;
         const offs = [[0,0]];
         for (const [start, end, content] of splices[file]) {
             const startOff = offs.findLast(([root]) => start >= root)[1];
             const endOffIdx = offs.findLastIndex(([root]) => end >= root);
             const endOff = offs[endOffIdx][1];
-            data = data.slice(0, start + startOff + align) + content + data.slice(end + endOff + align);
-            offs.splice(endOffIdx +1, 0, [end, endOff + (content.length - (end - start))]);
+            const left = data.slice(0, start + startOff);
+            const right = data.slice(end + endOff);
+            data = left + content + right;
+            let newEndOff = endOff + (content.length - (end - start));
+            offs.splice(endOffIdx +1, 0, [end, newEndOff, content.length - (end - start)]);
+            for (let i = endOffIdx +2; i < offs.length; i++)
+                newEndOff = offs[i][1] = newEndOff + offs[i][2];
         }
         fs.writeFileSync(file, data);
     }
-
-    const MainGame = require('./run/index.js');
-    const game = new MainGame(window, canvas);
-    function reportError(err) {
-        const render = game.render;
-        const draw = render.createDrawable(MainGame.layers.tooltip);
-        const skin = render.createTextCostumeSkin({
-            text: 'The following error has caused the game to crash;\n' + (err?.stack ?? err) + '\nData may have not saved. Please note in any reports what was happening at the time of this error.',
-            font: 'sans-serif',
-            color: 'white',
-            maxWidth: render.getNativeSize()[0],
-            size: 20,
-            align: 'left',
-            strokeWidth: 1,
-            strokeColor: 'black',
-            rainbow: false
-        });
-        render.updateDrawableSkinId(draw, skin);
-        // render.updateDrawablePosition(draw, [0, render.getNativeSize()[1] / 2]);
-        window.loop(() => { render.draw() });
-    }
-    process.on('uncaughtException', reportError);
-    process.on('unhandledRejection', reportError);
-    global.assets = game.assets;
-    game._initRenderer();
-    game.loadAssets()
-        .then(() => {
-            game._initKeys();
-            game._initTileSpace();
-            game.start();
-        });
 }
+/** @type {import('./src/index.js')} */
+const MainGame = require(isDevelop ? './src/index.js' : './run/index.js');
+const game = new MainGame(window, canvas);
+function reportError(err) {
+    const render = game?.render;
+    if (!render) return;
+    const draw = render.createDrawable(MainGame.layers.tooltip);
+    const oldIdx = render._drawList.indexOf(draw);
+    render._drawList.splice(oldIdx, 1);
+    render._drawList.push(draw);
+    const skin = render.createTextCostumeSkin({
+        text: 'The following error has caused the game to crash;\n' + (err?.stack ?? err) + '\nData may have not saved. Please note in any reports what was happening at the time of this error.',
+        font: 'sans-serif',
+        color: 'white',
+        maxWidth: render.getNativeSize()[0],
+        size: 20,
+        align: 'left',
+        strokeWidth: 1,
+        strokeColor: 'black',
+        rainbow: false
+    });
+    render.updateDrawableSkinId(draw, skin);
+    // render.updateDrawablePosition(draw, [0, render.getNativeSize()[1] / 2]);
+    window.loop(() => { render.draw() });
+}
+process.on('uncaughtException', reportError);
+process.on('unhandledRejection', reportError);
+global.assets = game.assets;
+// priority is set to the load index inside enabled-patches.json
+if (!isDevelop) sourcesToAdd.forEach(([path, priority]) => game.assets.addSource(path, priority))
+game._initRenderer();
+game.loadAssets()
+    .then(() => {
+        console.log('Finished loading assets, initializing game state.');
+        game._initKeys();
+        game._initTileSpace();
+        game.start();
+    });

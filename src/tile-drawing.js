@@ -13,19 +13,7 @@ class TileSpace {
         left: 6,
         top: 7,
         right: 8,
-        bottom: 9,
-        unopened: 10,
-        flagged: 11,
-        bombs0: 12,
-        bombs1: 13,
-        bombs2: 14,
-        bombs3: 15,
-        bombs4: 16,
-        bombs5: 17,
-        bombs6: 18,
-        bombs7: 19,
-        bombs8: 20,
-        bomb: 21
+        bottom: 9
     };
     static tileGeometry = {
         // note: all shapes must be concave, convex shapes cant be detected well arbitrarily
@@ -153,6 +141,7 @@ class TileSpace {
      * Enables collision geometry debugging
      */
     enableDebug() {
+        this.debug.enabled = true;
         this.debug.canvas = createCanvas(20,20);
         this.debug.ctx = this.debug.canvas.getContext('2d');
         this.debug.oldSkins = this.skins;
@@ -222,19 +211,6 @@ class TileSpace {
         this.skins[TileSpace.tiles.bottom] =      this.render.createSVGSkin(assets.get('bottom'));
         this.skins[TileSpace.tiles.bottomLeft] =  this.render.createSVGSkin(assets.get('bottom-left'));
         this.skins[TileSpace.tiles.left] =        this.render.createSVGSkin(assets.get('left'));
-
-        this.skins[TileSpace.tiles.unopened] = this.render.createBitmapSkin(assets.get('unopened'), 1);
-        this.skins[TileSpace.tiles.flagged] =  this.render.createBitmapSkin(assets.get('flagged'), 1);
-        this.skins[TileSpace.tiles.bombs0] =   this.render.createBitmapSkin(assets.get('zero-bombs'), 1);
-        this.skins[TileSpace.tiles.bombs1] =   this.render.createBitmapSkin(assets.get('one-bomb'), 1);
-        this.skins[TileSpace.tiles.bombs2] =   this.render.createBitmapSkin(assets.get('two-bombs'), 1);
-        this.skins[TileSpace.tiles.bombs3] =   this.render.createBitmapSkin(assets.get('three-bombs'), 1);
-        this.skins[TileSpace.tiles.bombs4] =   this.render.createBitmapSkin(assets.get('four-bombs'), 1);
-        this.skins[TileSpace.tiles.bombs5] =   this.render.createBitmapSkin(assets.get('five-bombs'), 1);
-        this.skins[TileSpace.tiles.bombs6] =   this.render.createBitmapSkin(assets.get('six-bombs'), 1);
-        this.skins[TileSpace.tiles.bombs7] =   this.render.createBitmapSkin(assets.get('seven-bombs'), 1);
-        this.skins[TileSpace.tiles.bombs8] =   this.render.createBitmapSkin(assets.get('eight-bombs'), 1);
-        this.skins[TileSpace.tiles.bomb] =     this.render.createBitmapSkin(assets.get('bomb'), 1);
     }
     /**
      * Converts the world space coords to screen space
@@ -244,9 +220,9 @@ class TileSpace {
     worldToScreen(point) {
         return point.clone()
             .mul(this.camera.scale)
+            .sub(this.screenWh.clone().div(2)) // align all of these tiles as if they are one solid drawable
+            .add(1) // offset back by one tile to abscure the left and top edges
             .mul(this.tileWh) // move coords to screen space
-            .sub(this.screenWh.clone().div(2).mul(this.tileWh)) // align all of these tiles as if they are one solid drawable
-            .add(this.tileWh.clone()) // offset back by one tile to abscure the left and top edges
             .sub(this.camera.pos.clone().mod(this.tileWh)) // offset by the camera, wrapping back around when necessary
             .rotate(this.camera.dir) // rotate by the camera rotation
             .scale(-1, 1)
@@ -314,11 +290,11 @@ class TileSpace {
                                 .clamp(1)
                             : p.clone().add(this.camera.pos.clone().div(this.tileWh).clamp(1)).clamp(1);
                         return {
-                            type: this.map[mapPos[0]][mapPos[1]]?.type ?? 0, 
+                            type: this.map[mapPos[0]]?.[mapPos[1]]?.type ?? 0, 
                             displayPos: p,
                             realPos: mapPos,
                             effects: {
-                                ...(this.map[mapPos[0]][mapPos[1]]?.effects ?? {}),
+                                ...(this.map[mapPos[0]]?.[mapPos[1]]?.effects ?? {}),
                                 repeatX: 1,
                                 repeatY: 1
                             }

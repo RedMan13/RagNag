@@ -77,13 +77,12 @@ class BitmapSkin extends Skin {
             bitmapData.reusable !== false
         ) {
             const context = bitmapData.getContext("2d", { willReadFrequently: true });
-            const rawData = context.getImageData(
+            textureData = context.getImageData(
                 0,
                 0,
                 bitmapData.width,
                 bitmapData.height,
             );
-            textureData = new ImageData(rawData.width, rawData.height, rawData.data.reduce((c,v,i) => (c[Point.fromGrid(i, rawData.width).scale(1,-1).translate(0,rawData.height).toIndex(rawData.width)] = v, c), new Uint8Array(rawData.data.length)));
         }
 
         if (this._texture === null) {

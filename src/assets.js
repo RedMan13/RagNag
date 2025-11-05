@@ -78,6 +78,7 @@ class Asset {
      */
     async load(sources) {
         if (this.loaded) return this.loaded;
+        console.log('Loading asset', this.id, 'from file', this.url);
         for (const source of sources) {
             const abs = path.resolve(source, this.url);
             if (!(await fs.access(abs, constants.R_OK).then(() => true).catch(() => false)))
@@ -88,6 +89,7 @@ class Asset {
             this.loaded = await loader.create(abs);
             break;
         }
+        console.log(!this.loaded ? 'Failed to load' : 'Finished loading', this.id);
         return this.loaded;
     }
     unload() {

@@ -162,6 +162,8 @@ class TextCostumeSkin extends Skin {
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        ctx.scale(1,-1);
+        ctx.translate(0,-this._canvas.height);
         ctx.scale(scale, scale);
         ctx.stroke();
         ctx.fill(); // Draw each line of text

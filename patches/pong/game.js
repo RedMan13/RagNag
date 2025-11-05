@@ -1,6 +1,6 @@
 const { createCanvas, ImageData } = require('canvas');
 const Point = require('./point.js');
-const { keys, names, stringifyKey } = require('./key-actions.js');
+const { keys, names, stringifyKey, handleKeys } = require('./key-actions.js');
 
 class Pong {
     /** 
@@ -21,6 +21,7 @@ class Pong {
         render.updateDrawableSkinId(this.padleB, this.dit);
         render.updateDrawableScale(this.padleB, [1000, 6000]);
         render.updateDrawablePosition(this.padleB, [(window.width / 2) - 20, 0]);
+        this.aiPos = 0;
         this.ball = render.createDrawable('gui');
         render.updateDrawableSkinId(this.ball, this.dit);
         render.updateDrawableScale(this.ball, [1000, 1000]);
@@ -61,18 +62,27 @@ class Pong {
             this.textCtx.fillText(messageTxt, center,y);
         }
         this.render.updateBitmapSkin(this.textSkin, this.textCan, 1, [this.textCan.width / 2, 0]);
+        this.render.updateDrawablePosition(this.textDraw, [0, window.height / 2]);
     }
     tick() {
         this.drawScore();
         this.render.updateDrawablePosition(this.padleA, [(-this.window.width / 2) + 20, (this.window.height / 2) - this.window.cursorPos.y]);
+        this.render.draw();
+        handleKeys(this.window);
         if (!this.playing) return;
         if (this.ballPos[1] >= ((this.window.height / 2) - 10) || this.ballPos[1] <= ((-this.window.height / 2) + 10))
             this.ballDir = -this.ballDir + 180;
         if (this.render.isTouchingDrawables(this.ball, [this.padleA, this.padleB])) {
-            this.ballDir = -this.ballDir;
+            let res;
+            if (this.ballPos[0] < 0)
+                res = ((Math.atan2(this.ballPos[1] - ((this.window.height / 2) - this.window.cursorPos.y), this.ballPos[0] - ((-this.window.width / 2) + 20)) / Math.PI) * 180) -90;
+            else 
+                res = ((Math.atan2(0, this.ballPos[0] - ((-this.window.width / 2) - 20)) / Math.PI) * 180) +90;
+            this.ballDir = Math.abs(Math.abs(res) - 90) < 1 ? -this.ballDir : res;
             this.ballSpeed++;
         }
-        this.render.updateDrawablePosition(this.padleB, [(window.width / 2) - 20, this.ballPos[1]]);
+        this.aiPos = this.ballPos[1];
+        this.render.updateDrawablePosition(this.padleB, [(window.width / 2) - 20, this.aiPos]);
         this.ballPos.add(new Point(this.ballSpeed,0).rotate(this.ballDir));
         if (this.ballPos[0] <= ((-this.window.width / 2) - 10)) {
             this.scoreB++;
