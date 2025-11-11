@@ -4,8 +4,9 @@ const twgl = require('twgl.js');
 class TextLayer {
     static tiles = Object.fromEntries(new Array(256).fill(-1)
         .map((_,i) => [String.fromCharCode(i), i]));
-    static ansiEscapeMatch = /\x1b\[(?<op>[a-z]+) (?:(?<args>(?:[0-9]*|#[0-9a-f]{3}|#[0-9a-f]{4}|#[0-9a-f]{6}|#[0-9a-f]{8})(?:;(?:[0-9]*|#[0-9a-f]{3}|#[0-9a-f]{4}|#[0-9a-f]{6}|#[0-9a-f]{8}))*) )?/gi;
+    static ansiEscapeMatch = /\x1b\[(?<op>[a-z]+) (?:(?<args>(?:[0-9.]*|#[0-9a-f]{3}|#[0-9a-f]{4}|#[0-9a-f]{6}|#[0-9a-f]{8})(?:;(?:[0-9]*|#[0-9a-f]{3}|#[0-9a-f]{4}|#[0-9a-f]{6}|#[0-9a-f]{8}))*) )?/gi;
     static tileSize = new Point(6,6);
+    static scrollBufferLength = 2048;
     static layer = 'gui';
     static colorNumberToGL(color) {
         const r = ((color >> 16) & 0xFF) / 255;
@@ -47,8 +48,6 @@ class TextLayer {
     }
 
     cursor = new Point(0,0);
-    /** @type {[string, number, number, boolean][][]} */
-    map = null;
     size = new Point(0,0);
     /** @type {import('./renderer/src/RenderWebGL')} */
     render = null;
@@ -71,19 +70,21 @@ class TextLayer {
     strokeWidth = 1;
     tabLength = 7;
     scrollOff = 0;
-    scrollBufferUp = [];
-    scrollBufferDown = [];
+    /** @type {twgl.FrameBufferInfo} */
+    scrollBufferUp = null;
+    /** @type {twgl.FrameBufferInfo} */
+    scrollBufferDown = null;
     constructor(window, render) {
-        this.resizeViewport(window.width, window.height);
         this.window = window;
         this.render = render;
+        this.resizeViewport(window.width, window.height);
         this.pen.draw = this.render.createDrawable(TextLayer.layer);
         this.pen.skin = this.render.createPenSkin();
         this.pen.alt = this.render.createPenSkin();
         this.render.updateDrawableSkinId(this.pen.draw, this.pen.skin);
         this.stamp = this.render.createDrawable(TextLayer.layer);
         this.render.updateDrawableVisible(this.stamp, false);
-        window.on('mousewheel', ({ deltaY }) => this.scroll(-deltaY / TextLayer.tileSize[1]));
+        window.on('mousewheel', ({ deltaY }) => this.scroll(-deltaY / TextLayer.tileSize[1] / TextLayer.tileSize[0]));
         this.text(new Array(this.size[0]).fill('q').join(''), new Point(0, this.size[1] -1));
     }
     set fill(v) {
@@ -98,11 +99,9 @@ class TextLayer {
         this.size.set(width, height);
         this.size.div(TextLayer.tileSize)
             .clamp(1);
-        this.map = new Array(this.size[0]).fill(0)
-            .map(() => new Array(this.size[1]).fill(0)
-                .map(() => [' ', this._stroke, this._fill, false]));
-        this.scrollBufferDown = new Array(this.size[0]).fill(0).map(() => []);
-        this.scrollBufferUp = new Array(this.size[0]).fill(0).map(() => []);
+        const gl = this.render.gl;
+        this.scrollBufferUp = twgl.createFramebufferInfo(gl, [{ format: gl.RGBA }], width, TextLayer.scrollBufferLength);
+        this.scrollBufferDown = twgl.createFramebufferInfo(gl, [{ format: gl.RGBA }], width, TextLayer.scrollBufferLength);
     }
     loadAssets(assets) {
         for (let i = 0; i < 256; i++)
@@ -116,24 +115,15 @@ class TextLayer {
         this.cursor.set(x,y);
     }
     clearAll() {
-        this.map = new Array(this.size[0]).fill(0)
-            .map(() => new Array(this.size[1]).fill(0)
-                .map(() => [' ', this._stroke, this._fill, false]));
         this.render.penClear(this.pen.skin);
     }
     clearArea(x,y, width, height) {
-        for (let xm = Math.floor(x); xm < (width + x); xm++)
-            for (let ym = Math.floor(y); ym < (height + y); ym++)
-                if (this.map[xm]?.[ym])
-                    this.map[xm][ym] = [' ', this._stroke, this._fill, false];
         const pos = new Point(x,y).sub(this.size.clone().div(2).sub([0,1]).translate(0,-height)).mul(TextLayer.tileSize);
-        this.render.penClearRect(this.pen.skin, pos[0], pos[1], width * TextLayer.tileSize[0], height * TextLayer.tileSize[1]);
+        this.render.penClearRect(this.pen.skin, Math.floor(pos[0]), Math.floor(pos[1]), Math.ceil(width * TextLayer.tileSize[0]), Math.ceil(height * TextLayer.tileSize[1]));
     }
     clearLine(line) {
-        this.map[line] = new Array(this.size[1]).fill(0)
-            .map(() => [' ', this._stroke, this._fill, false]);
         const pos = new Point(0, line).sub(this.size.clone().div(2).sub([0,1])).mul(TextLayer.tileSize);
-        this.render.penClearRect(this.pen.skin, 0, pos[1], this.size[0] * TextLayer.tileSize[0], TextLayer.tileSize[1]);
+        this.render.penClearRect(this.pen.skin, 0, Math.floor(pos[1]), this.size[0] * TextLayer.tileSize[0], TextLayer.tileSize[1]);
     }
     dot(x,y) {
         this.render.penPoint(this.pen.skin, {
@@ -170,7 +160,8 @@ class TextLayer {
         let italic = false;
         let backColor = this._fill;
         let last = 0;
-        const cursor = (pos ?? this.cursor.clone()).max(0).min(this.size.clone().sub(1)).clamp(1);
+        const cursor = (pos ?? this.cursor).clone().max(0).min(this.size.clone().sub(1));
+        pos ??= new Point(0,0);
         const tiles = [];
         for (const match of str.matchAll(TextLayer.ansiEscapeMatch)) {
             const args = (match.groups.args ?? '')
@@ -184,11 +175,11 @@ class TextLayer {
             const text = str.slice(last, match.index);
             for (const char of text) {
                 if (cursor[0] >= this.size[0]) {
-                    cursor[0] = 0;
+                    cursor[0] = pos[0];
                     cursor[1]++;
                 }
                 if (char === '\n') {
-                    cursor[0] = 0;
+                    cursor[0] = pos[0];
                     cursor[1]++;
                     continue;
                 }
@@ -218,11 +209,11 @@ class TextLayer {
         const text = str.slice(last);
         for (const char of text) {
             if (cursor[0] >= this.size[0]) {
-                cursor[0] = 0;
+                cursor[0] = pos[0];
                 cursor[1]++;
             }
             if (char === '\n') {
-                cursor[0] = 0;
+                cursor[0] = pos[0];
                 cursor[1]++;
                 continue;
             }
@@ -239,21 +230,15 @@ class TextLayer {
         this.putSection(tiles);
     }
     putSection(tiles) {
-        const scroll = Math.max((tiles.at(-1)?.[4]?.[1] ?? 0) - (this.size[1] -1), 0);
-        this.scroll(scroll);
         for (let i = tiles.length -1; i >= 0; i-- ) {
             const pos = tiles[i][4]
                 .max(0)
                 .min(this.size.clone().sub(1))
-                .sub(0,scroll)
                 .clone()
                 .sub(this.size.clone().div(2).sub([0,1]))
-                .mul(TextLayer.tileSize);
-            if (tiles[i][4][1] < 0) {
-                this.scrollBufferUp[tiles[i][4]].push(tiles[i]);
-                continue;
-            } else
-                this.map[tiles[i][4][0]][tiles[i][4][1]] = tiles[i];
+                .mul(TextLayer.tileSize)
+                .clamp(1);
+            if (tiles[i][4][1] < 0) continue;
             this.render.penClearRect(this.pen.skin, pos[0], pos[1], TextLayer.tileSize[0], TextLayer.tileSize[0]);
             this.render.updateDrawableSkinId(this.stamp, this.skins[tiles[i][0]]);
             this.render.updateDrawableEffect(this.stamp, 'horizontalShear', tiles[i][3] ? 2 : 0);
@@ -263,64 +248,51 @@ class TextLayer {
             this.render.penStamp(this.pen.skin, this.stamp);
         }
     }
+    /**
+     * Puts one frame buffer overtop another 
+     * @param {Point} pos 
+     * @param {twgl.FrameBufferInfo} source Location to get pixels from
+     * @param {twgl.FrameBufferInfo} destination Location to put pixels in
+     */
+    _frameOverFrame(pos, source, destination) {
+        const gl = this.render.gl;
+        pos = pos.clone().mul(TextLayer.tileSize);
+        twgl.bindFramebufferInfo(gl, source, gl.READ_FRAMEBUFFER);
+        twgl.bindFramebufferInfo(gl, destination, gl.DRAW_FRAMEBUFFER);
+        gl.blitFramebuffer(
+            // from xy xy
+            Math.max(-pos[0], 0), Math.max(-pos[1], 0), Math.min(source.width - pos[0], source.width), Math.min(source.height - pos[1], source.height),
+            // to xy xy
+            Math.max(pos[0], 0), Math.max(pos[1], 0), Math.min(source.width + pos[0], source.width), Math.min(source.height + pos[1], source.height),
+            // buffer and resampling filter
+            gl.COLOR_BUFFER_BIT, gl.LINEAR
+        );
+    }
     scroll(distance = 1) {
         distance = Math.round(distance);
         // nowhere to scroll
         if (distance === 0) return;
         // stamping one pen skin to another causes strange artifacting, instead we manually blit one onto the other
-        const gl = this.render.gl;
         const source = this.render._allSkins[this.pen.skin];
         const destination = this.render._allSkins[this.pen.alt];
-        twgl.bindFramebufferInfo(gl, source._framebuffer, gl.READ_FRAMEBUFFER);
+        const gl = this.render.gl;
         twgl.bindFramebufferInfo(gl, destination._framebuffer, gl.DRAW_FRAMEBUFFER);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.blitFramebuffer(
-            // from xy xy
-            0,0, source._framebuffer.width, source._framebuffer.height,
-            // to xy xy
-            0, TextLayer.tileSize[1] * distance, source._framebuffer.width, source._framebuffer.height + (TextLayer.tileSize[1] * distance),
-            // buffer and resampling filter
-            gl.COLOR_BUFFER_BIT, gl.LINEAR
-        );
+        const scrollPos = new Point(0, distance);
+        this._frameOverFrame(scrollPos, source._framebuffer, destination._framebuffer);
+        // copy for display
+        // copy for scroll buffer, in the necessary direction
+        if (distance >= 1) {
+            this._frameOverFrame(scrollPos.add([0,-this.size[1]]), source._framebuffer, this.scrollBufferUp);
+            this._frameOverFrame(scrollPos.add([0,-TextLayer.scrollBufferLength]).mul(-1), this.scrollBufferDown, destination._framebuffer);
+        } else {
+            this._frameOverFrame(scrollPos.add([0,this.size[1]]), source._framebuffer, this.scrollBufferUp);
+            this._frameOverFrame(scrollPos.add([0,TextLayer.scrollBufferLength]).mul(-1), this.scrollBufferUp, destination._framebuffer);
+        }
         this.pen.alt = source.id;
         this.pen.skin = destination.id;
         this.render.updateDrawableSkinId(this.pen.skin);
-        if (distance >= 1) {
-            for (let x = 0; x < this.size[0]; x++) {
-                const column = this.map[x];
-                const tiles = column.splice(0, distance);
-                this.scrollBufferUp[x].push(...tiles);
-            }
-        } else {
-            for (let x = 0; x < this.size[0]; x++) {
-                const column = this.map[x];
-                const tiles = column.splice(this.size[1] - distance, distance).reverse();
-                this.scrollBufferDown[x].push(...tiles);
-            }
-        }
-        const toInsert = [];
-        if (distance >= 1) {
-            // dont need to bother trying to collect from the scroll buffer, the buffer is empty
-            if (this.scrollBufferDown[0].length <= 0) return;
-            for (let x = 0; x < this.size[0]; x++) {
-                const column = this.scrollBufferDown[x];
-                const tiles = column.splice(column.length - distance, distance).filter(Boolean);
-                tiles.forEach((tile, i) => tile[4] = new Point(x, this.size[0] - (distance - i)));
-                toInsert.push(...tiles);
-            }
-        } else {
-            if (this.scrollBufferUp.length <= 0) return;
-            // requires positive distance since its used as length here
-            distance = Math.abs(distance);
-            for (let x = 0; x < this.size[0]; x++) {
-                const column = this.scrollBufferUp[x];
-                const tiles = column.splice(column.length - distance, distance).filter(Boolean);
-                tiles.forEach((tile, i) => tile[4] = new Point(x, distance - i));
-                toInsert.push(...tiles);
-            }
-        }
-        this.putSection(toInsert);
     }
 }
 

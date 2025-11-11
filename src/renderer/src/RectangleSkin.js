@@ -57,6 +57,7 @@ class RectangleSkin extends Skin {
             rotationCenter = this.calculateRotationCenter();
         this._rotationCenter[0] = rotationCenter[0];
         this._rotationCenter[1] = rotationCenter[1];
+        this.emitWasAltered();
     }
     /**
      * Update and returns the uniforms for this skin.

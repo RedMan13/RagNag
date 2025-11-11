@@ -396,7 +396,7 @@ class MainGame {
         });
     }
     _initKeys() {
-        keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.render, window), 'Opens the settings and exit menu'];
+        keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.text, window), 'Opens the settings and exit menu'];
         keys['Camera Left']           = [[names.A],         false, () => this.camOff[0] -= 200 * this.stats.drawTime.time, 'Moves the debug/painting camera left'];
         keys['Camera Right']          = [[names.D],         false, () => this.camOff[0] += 200 * this.stats.drawTime.time, 'Moves the debug/painting camera right'];
         keys['Camera Up']             = [[names.W],         false, () => this.camOff[1] += 200 * this.stats.drawTime.time, 'Moves the debug/painting camera up'];

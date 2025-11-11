@@ -1,5 +1,6 @@
 const { keys, stringifyKey, names } = require('./key-actions.js');
-const { DebuggerTiles } = require('./debuggers.js');
+const Point = require('./point.js');
+const TextLayer = require('./text-layer.js');
 
 const keySwitches = [
     [ // row one
@@ -52,7 +53,7 @@ const keySwitches = [
         [10,2, 1,1, ')\n0', names['0']],
         [11,2, 1,1, '_\n-', names['Minus']],
         [12,2, 1,1, '+\n=', names['Equal']],
-        [13,2, 2,1, '← Back\nSpace', names['Backspace']],
+        [13,2, 2,1, '\xEB Back\nSpace', names['Backspace']],
         [15.25,2, 1,1, 'Insert', names['Insert']],
         [16.25,2, 1,1, 'Home', names['Home']],
         [17.25,2, 1,1, 'Page\nUp', names['PageUp']],
@@ -81,7 +82,7 @@ const keySwitches = [
         [15.5,3, 1,1, 'Delete', names['Delete']],
         [17.5,3, 1,1, 'Page\nDown', names['PageDown']],
         [19,3, 1,1, '7\nHome', names['Numpad7']],
-        [20,3, 1,1, '8\n↑', names['Numpad8']],
+        [20,3, 1,1, '8\n\xE9', names['Numpad8']],
         [21,3, 1,1, '9\nPgUp', names['Numpad9']],
         [22,3, 1,2, '+', names['NumpadAdd']]],
     ],
@@ -99,10 +100,10 @@ const keySwitches = [
         [9.75,4, 1,1, 'L', names['L']],
         [10.75,4, 1,1, ':\n;', names['Semicolon']],
         [11.75,4, 1,1, '"\n\'', names['Apostrophe']],
-        [12.75,4, 2.25,1, 'Enter ↵', names['NumpadEnter']],
-        [19,4, 1,1, '4\n←', names['Numpad4']],
+        [12.75,4, 2.25,1, 'Enter \xEB\xDF', names['Enter']],
+        [19,4, 1,1, '4\n\xEB', names['Numpad4']],
         [20,4, 1,1, '5\n', names['Numpad5']],
-        [21,4, 1,1, '6\n→', names['Numpad6']]],
+        [21,4, 1,1, '6\n\xEA', names['Numpad6']]],
     ],
     [ // row six
         3,3,
@@ -118,208 +119,243 @@ const keySwitches = [
         [10.5,5, 1,1, '>\n.', names['Period']],
         [11.5,5, 1,1, '?\n/', names['Slash']],
         [12.5,5, 2.5,1, 'Shift', names['ShiftRight']],
-        [16.25,5, 1,1, '↑', names['ArrowUp']],
+        [16.25,5, 1,1, '\xE9', names['ArrowUp']],
         [19.25,5, 1,1, '1\nEnd', names['Numpad1']],
-        [20.25,5, 1,1, '2\n↓', names['Numpad2']],
+        [20.25,5, 1,1, '2\n\xE8', names['Numpad2']],
         [21.25,5, 1,1, '3\nPgDn', names['Numpad3']],
-        [22.25,5, 1,1, 'Enter', names['Enter']]],
+        [22.25,5, 1,1, 'Enter', names['NumpadEnter']]],
     ],
     [ // row seven
         0,0,
         [[0,6, 1.5,1, 'Ctrl', names['ControlLeft']],
-        [1.5,6, 1.25,1, '⌘', names['MetaLeft']], // meta key, or windows key, or whatever mac calls it
+        [1.5,6, 1.25,1, '\x8F', names['MetaLeft']], // meta key, or windows key, or whatever mac calls it
         [2.75,6, 1.5,1, 'Alt', names['AltLeft']],
         [4.25,6, 5.75,1, '', names['Space']],
         [10,6, 1.25,1, 'Alt', names['AltRight']],
-        [11.25,6, 1.25,1, '⌘', names['MetaRight']],
-        [12.5,6, 1.25,1, '☰', names['ContextMenu']],
+        [11.25,6, 1.25,1, '\x8F', names['MetaRight']],
+        [12.5,6, 1.25,1, '\x90', names['ContextMenu']],
         [13.75,6, 1.25,1, 'Ctrl', names['ControlRight']],
-        [15.5,6, 1,1, '←', names['ArrowRight']],
-        [16.5,6, 1,1, '↓', names['ArrowDown']],
-        [17.5,6, 1,1, '→', names['ArrowLeft']],
+        [15.5,6, 1,1, '\xEB', names['ArrowLeft']],
+        [16.5,6, 1,1, '\xE8', names['ArrowDown']],
+        [17.5,6, 1,1, '\xEA', names['ArrowRight']],
         [19.25,6, 2.25,1, '0\nInsert', names['Numpad0']],
         [21.5,6, 1,1, '.\nDel', names['NumpadDecimal']],
         [22.5,6, 1,1, '=', names['NumpadEqual']]],
     ],
 ];
 class Settings {
-    /** @type {import('./renderer/src/RenderWebGL.js')} */
-    render = null;
     /** @type {import('glfw-raub').Window} */
     window = null;
+    /** @type {import('./text-layer.js')} */
+    text = null;
     /** @type {DebuggerTiles} */
     tiles = null;
-    constructor(render, window) {
-        this.render = render;
+    constructor(text, window) {
+        this.text = text;
         this.window = window;
-        this.tiles = new DebuggerTiles(1, this.window.width, this.window.height, 'settings', this.render, window, {});
-        this.tiles.direction = 'down';
-        this.tiles.alignmentColumn = 'center';
-        this.tiles.alignmentRow = 'center';
-        let changed = true;
-        const ranges = [];
-        // i ***REALLY*** like the rainworld input map
-        this.tiles.createTile(/** @param {import('canvas').CanvasRenderingContext2D} ctx */ function(ctx) {
-            if (!changed) return true;
-            changed = false;
-            ctx.resetTransform();
-            ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
-            ctx.fillStyle = '#0000007F';
-            ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
-            ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-            ctx.scale(this.subSampling, this.subSampling);
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 1;
-            ctx.textBaseline = 'middle'
-
-            function createRoundRect(x,y, w,h, rad) {
-                const bottomLeft = [x,y];
-                const bottomRight = [x + w, y];
-                const topLeft = [x, y + h];
-                const topRight = [x + w, y + h];
-                const bottom = [x + (w / 2), y];
-                const top = [x + (w / 2), y + h];
-                const left = [x, y + (h / 2)];
-                const right = [x + w, y + (h / 2)];
-                ctx.beginPath();
-                ctx.moveTo(...bottom);
-                ctx.arcTo(...bottomLeft, ...left, rad);
-                ctx.arcTo(...topLeft, ...top, rad);
-                ctx.arcTo(...topRight, ...right, rad);
-                ctx.arcTo(...bottomRight, ...bottom, rad);
-                ctx.closePath();
-            }
-            createRoundRect(-449.5,-136, 899,272, 8);
-            ctx.stroke();
-            let labelsUp = true;
-            let leftList = true;
-            let nameRowTopLeft = 0;
-            let nameRowTopRight = 0;
-            let nameRowBottomLeft = 0;
-            let nameRowBottomRight = 0;
-            function drawKey(x,y, w,h, label, filled, name = 'no name') {
-                x *= 38;
-                y *= 38;
-                x += -443.5;
-                y += -130;
-                w *= 38;
-                h *= 38;
-                w -= 6;
-                h -= 6;
-                ranges.push([x, y, x + w, y + h, label]);
-                ctx.lineWidth = 2;
-                ctx.fillStyle = 'black';
-                ctx.strokeStyle = 'white';
-                ctx.textAlign = 'left';
-                createRoundRect(x,y, w,h, 6);
-                ctx.stroke();
-                ctx.fill();
-                if (filled) {
-                    createRoundRect(x +3,y +3, w -6,h -6, 4);
-                    ctx.stroke();
-                }
-                if (filled) ctx.fillStyle = 'white';
-                else ctx.fillStyle = '#FFFFFF80';
-                const measures = ctx.measureText('`1234567890-=qwertyuiop[]\\asdfghjkl;\'zxcvbnm,./');
-                const lineHeight = measures.actualBoundingBoxAscent + measures.actualBoundingBoxDescent;
-                const height = (label.split('\n').length -1) * lineHeight;
-                let textY = y + ((h - height) / 2);
-                for (const line of label.split('\n')) {
-                    const measures = ctx.measureText(line);
-                    ctx.fillText(line, x + ((w - Math.min(measures.width, w -6)) / 2), textY, w - 6);
-                    textY += height;
-                }
-                if (true) {
-                    name ||= 'Clear Camera Position'
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = '#ffffff80';
-                    if (leftList) ctx.textAlign = 'right';
-                    else ctx.textAlign = 'left';
-                    ctx.beginPath();
-                    let endPoint = [];
-                    if (labelsUp) {
-                        const nameY = (leftList ? nameRowTopLeft++ : nameRowTopRight++) * lineHeight;
-                        ctx.moveTo(x + (w / 2), y);
-                        endPoint = [x + (w / 2), (((-136 - y) + y) - 4) - nameY];
-                        ctx.lineTo(...endPoint);
-                        ctx.arcTo(endPoint[0], endPoint[1] - 4, endPoint[0] += leftList ? -4 : 4, endPoint[1] -= 4, 4);
-                        ctx.translate(...endPoint);
-                        ctx.rotate((-0 / 180) * Math.PI);
-                        ctx.fillText(name, 0, 0);
-                        ctx.rotate((0 / 180) * Math.PI);
-                        ctx.translate(-endPoint[0], -endPoint[1]);
-                    } else {
-                        const nameY = (leftList ? nameRowBottomLeft++ : nameRowBottomRight++) * lineHeight;
-                        ctx.moveTo(x + (w / 2), y + h);
-                        endPoint = [x + (w / 2), (136 - (y + h)) + (y + h) + 4 + nameY];
-                        ctx.lineTo(...endPoint);
-                        ctx.arcTo(endPoint[0], endPoint[1] + 4, endPoint[0] += leftList ? -4 : 4, endPoint[1] += 4, 4);
-                        ctx.translate(...endPoint);
-                        ctx.rotate((0 / 180) * Math.PI);
-                        ctx.fillText(name, 0, 0);
-                        ctx.rotate((-0 / 180) * Math.PI);
-                        ctx.translate(-endPoint[0], -endPoint[1]);
-                    }
-                    ctx.stroke();
-                }
-            }
-            labelsUp = true;
-            for (let i = 0; i < keySwitches.length / 2; i++) {
-                const row = keySwitches[i];
-                nameRowTopLeft = row[0];
-                nameRowTopRight = row[1];
-                leftList = true;
-                for (let j = 0; j < row[2].length / 2; j++)
-                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                        Object.entries(keys)
-                            .some(item => item[1][0].includes(row[2][j][5])),
-                        Object.entries(keys)
-                            .filter(item => item[1][0].includes(row[2][j][5]))
-                            .map(item => item[0])
-                            .join(', ')
-                    );
-                leftList = false;
-                for (let j = row[2].length -1; j >= row[2].length / 2; j--)
-                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                        Object.entries(keys)
-                            .some(item => item[1][0].includes(row[2][j][5])),
-                        Object.entries(keys)
-                            .filter(item => item[1][0].includes(row[2][j][5]))
-                            .map(item => item[0])
-                            .join(', ')
-                    );
-            }
-            labelsUp = false;
-            for (let i = keySwitches.length -1; i >= keySwitches.length / 2; i--) {
-                const row = keySwitches[i];
-                nameRowBottomLeft = row[0];
-                nameRowBottomRight = row[1];
-                leftList = true;
-                for (let j = 0; j < row[2].length / 2; j++)
-                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                        Object.entries(keys)
-                            .some(item => item[1][0].includes(row[2][j][5])),
-                        Object.entries(keys)
-                            .filter(item => item[1][0].includes(row[2][j][5]))
-                            .map(item => item[0])
-                            .join(', ')
-                    );
-                leftList = false;
-                for (let j = row[2].length -1; j >= row[2].length / 2; j--)
-                    drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], 
-                        Object.entries(keys)
-                            .some(item => item[1][0].includes(row[2][j][5])),
-                        Object.entries(keys)
-                            .filter(item => item[1][0].includes(row[2][j][5]))
-                            .map(item => item[0])
-                            .join(', ')
-                    );
-            }
-        }, this.window.width, this.window.height);
-        this.tiles.resetPositions();
-        changed = true;
+        this.draw();
     }
-    draw() { this.tiles.renderTiles(); }
-    fireClicks() { this.tiles.fireClicks(); }
+    draw() {
+        this.text.clearAll();
+        this.labelsUp = true;
+        this.leftList = true;
+        this.nameRowTopLeft = 0;
+        this.nameRowTopRight = 0;
+        this.nameRowBottomLeft = 0;
+        this.nameRowBottomRight = 0;
+        this.labelsUp = true;
+        this.linePoses = [];
+        for (let i = 0; i < keySwitches.length / 2; i++) {
+            const row = keySwitches[i];
+            this.nameRowTopLeft = row[0];
+            this.nameRowTopRight = row[1];
+            this.leftList = true;
+            for (let j = 0; j < row[2].length / 2; j++)
+                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                    Object.entries(keys)
+                        .some(item => item[1][0].includes(row[2][j][5])),
+                    Object.entries(keys)
+                        .filter(item => item[1][0].includes(row[2][j][5]))
+                        .map(item => item[0])
+                        .join(', ')
+                );
+            this.leftList = false;
+            for (let j = row[2].length -1; j >= row[2].length / 2; j--)
+                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                    Object.entries(keys)
+                        .some(item => item[1][0].includes(row[2][j][5])),
+                    Object.entries(keys)
+                        .filter(item => item[1][0].includes(row[2][j][5]))
+                        .map(item => item[0])
+                        .join(', ')
+                );
+        }
+        // tack on the mouse
+        this.drawKey(24.5, 0, 1.5,2, 'L', names['MouseLeft'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['MouseLeft'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['MouseLeft']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.drawKey(26, 0, .5,2, 'M', names['MouseMiddle'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['MouseMiddle'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['MouseMiddle']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.drawKey(26.5, 0, 1.5,2, 'R', names['MouseRight'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['MouseRight'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['MouseRight']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.drawKey(24.5, 2, 3.5,3, '', names['MouseRight'], false);
+        this.drawKey(27.84, 2.6, .32,2.4, '', names['MouseRight'], false);
+        this.drawKey(28, 3.2, .32,1.8, '', names['MouseRight'], false);
+        this.drawKey(28.16, 3.8, .34,1.2, '', names['MouseRight'], false);
+        this.drawKey(28.34, 4.4, .34,.6, '', names['MouseRight'], false);
+        this.drawKey(28, 2, .31,.6, '4', names['Mouse4'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['Mouse4'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['Mouse4']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.drawKey(28.18, 2.6, .31,.6, '5', names['Mouse5'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['Mouse5'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['Mouse5']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.drawKey(28.36, 3.2, .31,.6, '6', names['Mouse6'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['Mouse6'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['Mouse6']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.drawKey(28.55, 3.8, .31,.6, '7', names['Mouse7'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['Mouse7'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['Mouse7']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.drawKey(28.73, 4.4, .31,.6, '8', names['Mouse8'],
+            Object.entries(keys)
+                .some(item => item[1][0].includes(names['Mouse8'])),
+            Object.entries(keys)
+                .filter(item => item[1][0].includes(names['Mouse8']))
+                .map(item => item[0])
+                .join(', ')
+        );
+        this.labelsUp = false;
+        for (let i = keySwitches.length -1; i >= keySwitches.length / 2; i--) {
+            const row = keySwitches[i];
+            this.nameRowBottomLeft = row[0];
+            this.nameRowBottomRight = row[1];
+            this.leftList = true;
+            for (let j = 0; j < row[2].length / 2; j++)
+                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                    Object.entries(keys)
+                        .some(item => item[1][0].includes(row[2][j][5])),
+                    Object.entries(keys)
+                        .filter(item => item[1][0].includes(row[2][j][5]))
+                        .map(item => item[0])
+                        .join(', ')
+                );
+            this.leftList = false;
+            for (let j = row[2].length -1; j >= row[2].length / 2; j--)
+                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                    Object.entries(keys)
+                        .some(item => item[1][0].includes(row[2][j][5])),
+                    Object.entries(keys)
+                        .filter(item => item[1][0].includes(row[2][j][5]))
+                        .map(item => item[0])
+                        .join(', ')
+                );
+        }
+    }
+    drawKey(x,y, w,h, label, code, filled, name = 'no name') {
+        x *= 38;
+        y *= 38;
+        x /= TextLayer.tileSize[0];
+        y /= TextLayer.tileSize[1];
+        x += (this.text.size[0] / 2) - 88.66;
+        y += (this.text.size[1] / 2) - 19;
+        w *= 38;
+        h *= 38;
+        w -= 6;
+        h -= 6;
+        w /= TextLayer.tileSize[0];
+        h /= TextLayer.tileSize[1];
+        const textWidth = label.split('\n').reduce((c,v) => Math.max(c, v.length), 0);
+        const textPos = new Point((x + (w / 2)) - (textWidth / 2), y + (h / 2));
+        this.text.fill = filled ? '#EEE8' : '#9998';
+        this.text.strokeWidth = 0;
+        this.text.rect(x,y, w,h);
+        this.text.stroke = '#EEEF';
+        this.text.text(label, textPos);
+        this.text.fill = '#0000';
+        this.text.strokeWidth = 1;
+        this.text.stroke = '#EEEA';
+        if (filled) {
+            const xPos = Math.floor((x + (w / 2)) * TextLayer.tileSize[0]) / TextLayer.tileSize[0];
+            const nameWidth = name.split('\n').reduce((c,v) => Math.max(c, v.length), 0);
+            const lines = name.split('\n').length;
+            if (this.labelsUp) {
+                let yPos = -lines;
+                for (let i = 0; i < this.linePoses.length; i++) {
+                    const pos = this.linePoses[i];
+                    if ((pos[1] >= yPos && pos[1] <= (yPos + lines)) || 
+                        ((pos[1] + pos[3]) >= yPos && (pos[1] + pos[3]) <= (yPos + lines)) ||
+                        (yPos >= pos[1] && yPos <= (pos[1] + pos[3])) || 
+                        ((yPos + lines) >= pos[1] && (yPos + lines) <= (pos[1] + pos[3]))) {
+                        if ((pos[0]           >= xPos && pos[0]            <= (xPos + nameWidth)) ||
+                            ((pos[0] + pos[2]) >= xPos && (pos[0] + pos[2]) <= (xPos + nameWidth)) ||
+                            (xPos              >= pos[0] && xPos               <= (pos[0] + pos[2])) ||
+                            ((xPos + nameWidth) >= pos[0] && (xPos + nameWidth) <= (pos[0] + pos[2])))
+                            yPos -= lines;
+                    }
+                }
+                this.linePoses.push([xPos + (2 / TextLayer.tileSize[0]),yPos,nameWidth,lines]);
+                yPos += (this.text.size[1] / 2) - 19;
+                this.text.line(xPos, y, xPos, yPos);
+                this.text.stroke = '#EEEF';
+                this.text.text(name, new Point(xPos + (2 / TextLayer.tileSize[0]), yPos));
+            } else {
+                let yPos = lines;
+                for (let i = 0; i < this.linePoses.length; i++) {
+                    const pos = this.linePoses[i];
+                    if (((pos[1] >= yPos && pos[1] <= (yPos + lines)) || 
+                        ((pos[1] + pos[3]) >= yPos && (pos[1] + pos[3]) <= (yPos + lines))) ||
+                        ((yPos >= pos[1] && yPos <= (pos[1] + pos[3])) || 
+                        ((yPos + lines) >= pos[1] && (yPos + lines) <= (pos[1] + pos[3])))) {
+                        if (((pos[0]           >= xPos && pos[0]            <= (xPos + nameWidth)) ||
+                            ((pos[0] + pos[2]) >= xPos && (pos[0] + pos[2]) <= (xPos + nameWidth))) ||
+                            ((xPos              >= pos[0] && xPos               <= (pos[0] + pos[2])) ||
+                            ((xPos + nameWidth) >= pos[0] && (xPos + nameWidth) <= (pos[0] + pos[2]))))
+                            yPos += lines;
+                    }
+                }
+                this.linePoses.push([xPos + (2 / TextLayer.tileSize[0]),yPos,nameWidth,lines]);
+                yPos += (this.text.size[1] / 2) + 25.33;
+                this.text.line(xPos, y + h, xPos, yPos);
+                this.text.stroke = '#EEEF';
+                this.text.text(name, new Point(xPos + (2 / TextLayer.tileSize[0]), yPos));
+            }
+        }
+    }
 }
 module.exports = Settings;
