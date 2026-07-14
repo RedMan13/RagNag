@@ -1,4 +1,5 @@
 const TileSpace = require('./tile-drawing');
+const TextLayer = require('./text-layer');
 const Point = require('./point');
 const { createCanvas } = require('canvas');
 
@@ -31,8 +32,20 @@ class Entity {
         this.size[0] = Physics.entityDatas[kind].dimensions[0];
         this.size[1] = Physics.entityDatas[kind].dimensions[1];
     }
-    /** @param {TileSpace} tiles */
-    step({ tiles, maxSpeed }, neighbors) { // 400 tiles a second at 20 vel
+    /**
+     * Converts a point to the text layer coordinate space
+     * @param {TileSpace} tiles 
+     * @param {Point} pos 
+     * @returns {Point}
+     */
+    toDebug(tiles, pos) {
+        return tiles.worldToScreen(pos).div(TextLayer.tileSize)
+    }
+    /**
+     * @param {{ tiles: TileSpace, maxSpeed: number }} param0 
+     * @param {Entity[]} neighbors 
+     */
+    step({ tiles, maxSpeed }, neighbors) {
         // remove NaN, Infinity and over-speed, it doesnt help us at all
         this.vel.max(-maxSpeed).min(maxSpeed);
         this.vel[0] ||= 0;
@@ -63,15 +76,15 @@ class Entity {
             for (let i = leor; i <= reor; i++) {
                 const tilePos = this.pos
                     .clone()
-                    .add([i, (this.size[1] / 2) * signs[1]])
-                    .add([0, signs[1] < 0 ? Math.floor(-this.size[1] * tiles.tileWh[1]) : 0])
+                    .add([i, -(this.size[1] / 2) * tiles.tileWh[1]])
+                    .add([0, signs[1] < 0 ? -this.size[1] * tiles.tileWh[1] : 0])
                     .div(tiles.tileWh)
                     .scale(-1, 1)
                     .translate(tiles.wh[0], 0)
                     .clamp(1);
                 const pos = this.pos
                     .clone()
-                    .add([i, (this.size[1] / 2) * signs[1]])
+                    .add([i, -(this.size[1] / 2) * tiles.tileWh[1]])
                     .add([0, signs[1] < 0 ? -this.size[1] * tiles.tileWh[1] : 0])
                     .mod(tiles.tileWh)
                     .div(tiles.tileWh)
@@ -79,14 +92,15 @@ class Entity {
                     .clamp(1)
                     .scale(1,-1)
                     .translate(0, 5);
-                const tile = tiles.map[Point.mod(tilePos[0], tiles.wh[0])]?.[tilePos[1] + signs[1]];
-                if (tile?.type > 0 && TileSpace.tileGeometry[tile.type][pos.toIndex(5)] > 0) {
+                const tile = tiles.map[Point.mod(tilePos[0], tiles.wh[0])]?.[tilePos[1]];
+                if (!tile || tile?.type > 0 && TileSpace.tileGeometry[tile.type][pos.toIndex(5)] > 0) {
                     this.vel[1] = 0;
                     if (signs[1] === -1) {
-                        this.pos[1] = (Math.ceil(this.pos[1] / (tiles.tileWh[1] / 4)) * (tiles.tileWh[1] / 4));
+                        this.pos[1] = (Math.floor(this.pos[1] / (tiles.tileWh[1] / 4)) * (tiles.tileWh[1] / 4));
+                        
                         this.collided = 'down';
                     } else {
-                        this.pos[1] = ((Math.floor((this.pos[1] / tiles.tileWh[1]) * 5) / 5) * tiles.tileWh[1]) - Math.abs(teor);
+                        this.pos[1] = (Math.ceil(this.pos[1] / (tiles.tileWh[1] / 4)) * (tiles.tileWh[1] / 4));
                         this.collided = 'up';
                     }
                     break;
@@ -101,7 +115,7 @@ class Entity {
             for (let i = beor; i <= teor; i++) {
                 const tilePos = this.pos
                     .clone()
-                    .add([(this.size[0] / 2) * signs[0], i])
+                    .add([(this.size[0] / 2) * tiles.tileWh[0] * signs[0], i])
                     .add([signs[0] > 0 ? Math.floor(this.size[0] * tiles.tileWh[0]) : 0, 0])
                     .div(tiles.tileWh)
                     .scale(-1, 1)
@@ -109,22 +123,22 @@ class Entity {
                     .clamp(1);
                 const pos = this.pos
                     .clone()
-                    .mod(tiles.tileWh)
-                    .add([(this.size[0] / 2) * signs[0], i])
+                    .add([(this.size[0] / 2) * tiles.tileWh[0] * signs[0], i])
                     .add([signs[0] > 0 ? Math.floor(this.size[0] * tiles.tileWh[0]) : 0, 0])
+                    .mod(tiles.tileWh)
                     .div(tiles.tileWh)
                     .mul(5)
                     .clamp(1)
                     .scale(1,-1)
                     .translate(0, 5);
-                const tile = tiles.map[Point.mod(tilePos[0] + signs[0], tiles.wh[0])]?.[tilePos[1]];
-                if (tile?.type > 0 && TileSpace.tileGeometry[tile.type][pos] > 0) {
+                const tile = tiles.map[Point.mod(tilePos[0], tiles.wh[0])]?.[tilePos[1]];
+                if (!tile || tile?.type > 0 && TileSpace.tileGeometry[tile.type][pos] > 0) {
                     this.vel[0] = 0;
                     if (signs[0] === -1) {
-                        this.pos[0] = ((Math.ceil((this.pos[0] / tiles.tileWh[0]) * 5) / 5) * tiles.tileWh[0]) + Math.abs(leor);
+                        this.pos[0] = (Math.floor(this.pos[0] / (tiles.tileWh[0] / 4)) * (tiles.tileWh[0] / 4));
                         this.collided = 'left';
                     } else {
-                        this.pos[0] = ((Math.floor((this.pos[0] / tiles.tileWh[0]) * 5) / 5) * tiles.tileWh[0]);
+                        this.pos[0] = (Math.ceil(this.pos[0] / (tiles.tileWh[0] / 4)) * (tiles.tileWh[0] / 4));
                         this.collided = 'right';
                     }
                     break;

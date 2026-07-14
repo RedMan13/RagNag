@@ -146,6 +146,8 @@ class TileSpace {
         this.debug.ctx = this.debug.canvas.getContext('2d');
         this.debug.oldSkins = this.skins;
         this.debug.ctx.fillStyle = 'red';
+        this.debug.ctx.scale(1,-1);
+        this.debug.ctx.translate(0,-this.debug.canvas.height);
         this.debug.ctx.scale(4,4);
         this.skins = {};
         for (const type in TileSpace.tileGeometry) {

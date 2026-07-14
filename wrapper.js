@@ -14,7 +14,8 @@ const { window, canvas } = initFrame({
     isWebGL2: true,
     isGles3: true,
     title: 'Rag Nag',
-    msaa: 3
+    msaa: 3,
+    resizable: true
 });
 const icon = new Image('./icon.png');
 icon.onload = () => window.icon = icon;
@@ -24,6 +25,7 @@ if (isDevelop) console.log('Launching from source.');
 const sourcesToAdd = [];
 const patchs = [];
 if (!isDevelop) {
+    window.mode = 'fullscreen';
     fs.cpSync('./src', './run', { recursive: true });
 
     // vondy
@@ -92,8 +94,8 @@ if (!isDevelop) {
         fs.writeFileSync(file, data);
     }
 }
-/** @type {import('./src/index.js')} */
 const MainGame = require(isDevelop ? './src/index.js' : './run/index.js');
+/** @type {import('./src/index.js')} */
 const game = new MainGame(window, canvas);
 function reportError(err) {
     const render = game?.render;
@@ -121,7 +123,8 @@ process.on('uncaughtException', reportError);
 process.on('unhandledRejection', reportError);
 global.assets = game.assets;
 // priority is set to the load index inside enabled-patches.json
-if (!isDevelop) sourcesToAdd.forEach(([path, priority]) => game.assets.addSource(path, priority))
+if (!isDevelop) sourcesToAdd.forEach(([path, priority]) => game.assets.addSource(path, priority));
+game.showTopBar = isDevelop;
 game._initRenderer();
 game.loadAssets()
     .then(() => {

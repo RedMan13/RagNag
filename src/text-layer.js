@@ -1,5 +1,8 @@
 const Point = require('./point');
 const twgl = require('twgl.js');
+const { Image: SVGImage } = require('canvas');
+const BitmapImage = require('image-raub');
+const fs = require('fs/promises');
 
 class TextLayer {
     static tiles = Object.fromEntries(new Array(256).fill(-1)
@@ -64,11 +67,16 @@ class TextLayer {
     skins = {};
     /** @type {import('glfw-raub').Window} */
     window = null;
-    needsFlush = false;
     _fill = 0x00000000;
     _stroke = 0xFFFFFFFF;
     strokeWidth = 1;
+    italic = false;
     tabLength = 7;
+    textScale = 1;
+    /** @type {'left'|'right'|'center'} */
+    xAlign = 'left';
+    /** @type {'top'|'center'|'bottom'} */
+    yAlign = 'top';
     scrollOff = 0;
     /** @type {twgl.FrameBufferInfo} */
     scrollBufferUp = null;
@@ -102,12 +110,15 @@ class TextLayer {
         const gl = this.render.gl;
         this.scrollBufferUp = twgl.createFramebufferInfo(gl, [{ format: gl.RGBA }], width, TextLayer.scrollBufferLength);
         this.scrollBufferDown = twgl.createFramebufferInfo(gl, [{ format: gl.RGBA }], width, TextLayer.scrollBufferLength);
+        this.scrollBufferSwap = twgl.createFramebufferInfo(gl, [{ format: gl.RGBA }], width, TextLayer.scrollBufferLength);
     }
     loadAssets(assets) {
         for (let i = 0; i < 256; i++)
             this.skins[String.fromCharCode(i)] = this.render.createBitmapSkin(assets.get(`char-${i}`), 1, [0,0]);
         this.skins['rectangle'] = this.render.createRectangleSkin([0,0]);
         this.skins['elipse'] = this.render.createElipseSkin([0,0]);
+        this.skins['bitmap'] = this.render.createBitmapSkin(BitmapImage.fromPixels(1,1,1, Buffer.from([1])), [0,0]);
+        this.skins['svg'] = this.render.createSVGSkin('data:image/svg+xml;utf8,<svg></svg>', [0,0]);
     }
     moveTo(x,y) { this.cursor.set(x,y); }
     lineTo(x,y) {
@@ -142,109 +153,241 @@ class TextLayer {
         this.render.updateDrawableEffect(this.stamp, 'horizontalShear', 0);
         this.render.updateDrawableEffect(this.stamp, 'tintWhites', 0);
         this.render.updateDrawableEffect(this.stamp, 'tintBlacks', 0);
-        this.render.updateDrawablePosition(this.stamp, [(x - (this.size[0] / 2)) * TextLayer.tileSize[0], (height + (y - ((this.size[1] / 2) -1))) * TextLayer.tileSize[1]]);
-        this.render.updateRectangleSkin(this.skins['rectangle'], [width * TextLayer.tileSize[0], height * TextLayer.tileSize[1]], TextLayer.colorNumberToGL(this._fill), TextLayer.colorNumberToGL(this._stroke), this.strokeWidth, [0,0]);
+        const size = new Point(width,height).mul(TextLayer.tileSize);
+        const pos = new Point(x,y)
+            .sub(this.size.clone().div(2).translate(0,-1))
+            .mul(TextLayer.tileSize);
+        switch (this.xAlign) {
+        case 'left': break;
+        case 'center': pos[0] += size[0] / 2; break;
+        case 'right': pos[0] += size[0]; break;
+        }
+        switch (this.yAlign) {
+        case 'top': pos[1] += size[1]; break;
+        case 'center': pos[1] += size[1] / 2; break;
+        case 'bottom': break;
+        }
+        this.render.updateDrawablePosition(this.stamp, pos);
+        this.render.updateDrawableScale(this.stamp, [100,100]);
+        this.render.updateRectangleSkin(this.skins['rectangle'], size, TextLayer.colorNumberToGL(this._fill), TextLayer.colorNumberToGL(this._stroke), this.strokeWidth, [0,0]);
         this.render.penStamp(this.pen.skin, this.stamp);
     }
     elipse(x,y, radiusX, radiusY, start = 0, end = 360) {
-        this.render.updateElipseSkin(this.skins['elipse'], [radiusX * TextLayer.tileSize[0], radiusY * TextLayer.tileSize[1]], TextLayer.colorNumberToGL(this._fill), [0,0], start, end, TextLayer.colorNumberToGL(this._stroke), this.strokeWidth, [0,0]);
         this.render.updateDrawableSkinId(this.stamp, this.skins['elipse']);
         this.render.updateDrawableEffect(this.stamp, 'horizontalShear', 0);
         this.render.updateDrawableEffect(this.stamp, 'tintWhites', 0);
         this.render.updateDrawableEffect(this.stamp, 'tintBlacks', 0);
-        this.render.updateDrawablePosition(this.stamp, [(x - (this.size[0] / 2)) * TextLayer.tileSize[0], ((y + height) - ((this.size[1] / 2) -1)) * TextLayer.tileSize[1]]);
+        const radi = new Point(radiusX,radiusY).mul(TextLayer.tileSize);
+        const pos = new Point(x,y)
+            .sub(this.size.clone().div(2).translate(0,-1))
+            .mul(TextLayer.tileSize);
+        switch (this.xAlign) {
+        case 'left': break;
+        case 'center': pos[0] += radi[0] / 2; break;
+        case 'right': pos[0] += radi[0]; break;
+        }
+        switch (this.yAlign) {
+        case 'top': pos[1] += radi[1]; break;
+        case 'center': pos[1] += radi[1] / 2; break;
+        case 'bottom': break;
+        }
+        this.render.updateDrawablePosition(this.stamp, pos);
+        this.render.updateDrawableScale(this.stamp, [100,100]);
+        this.render.updateElipseSkin(this.skins['elipse'], radi, TextLayer.colorNumberToGL(this._fill), [0,0], start, end, TextLayer.colorNumberToGL(this._stroke), this.strokeWidth, [0,0]);
+        this.render.penStamp(this.pen.skin, this.stamp);
+    }
+    async image(image, x,y, width,height) {
+        if (typeof image === 'string') {
+            // external url or blob, pass to fetch to resolve
+            if (/$(https?|data|blob):/i.test(image)) {
+                const req = await fetch(image);
+                if (!req.ok) return console.error(`${image} could not be loaded`);
+                const res = Buffer.from(await req.bytes());
+                if (req.headers.get('content-type') === 'image/svg+xml') image = res.toString('utf8');
+                else await new Promise(resolve => {
+                    // image-raub has wider type support, and the only reason we even care
+                    // here is due to vectors not being supported and needing special care
+                    const img = new BitmapImage();
+                    img.onerror = (...args) => console.error('bad image url', image, 'error:', ...args);
+                    img.onload = () => resolve(image = img);
+                    img.src = res;
+                });
+            }
+            // its not a raw SVG, so it must be a local file handle
+            if (!image.includes('<svg')) {
+                const res = await fs.readFile(image);
+                if (req.headers.get('content-type') === 'image/svg+xml') image = res.toString('utf8');
+                else await new Promise(resolve => {
+                    // image-raub has wider type support, and the only reason we even care
+                    // here is due to vectors not being supported and needing special care
+                    const img = new BitmapImage();
+                    img.onerror = (...args) => console.error('bad image url', image, 'error:', ...args);
+                    img.onload = () => resolve(image = img);
+                    img.src = res;
+                });
+            }
+        }
+        if (image instanceof Buffer) {
+            // may be an SVG?
+            if (image.toString('utf8').includes('<svg')) image = res.toString('utf8');
+            // alas, it was not
+            else await new Promise(resolve => {
+                // image-raub has wider type support, and the only reason we even care
+                // here is due to vectors not being supported and needing special care
+                const img = new BitmapImage();
+                img.onerror = (...args) => console.error('bad image url', image, 'error:', ...args);
+                img.onload = () => resolve(image = img);
+                img.src = image;
+            });
+
+        }
+        if ((image instanceof SVGImage && /<svg|image\/svg+xml|.svg^/i.test(image.src)) ||
+            (typeof image === 'string' && image.includes('<svg'))) {
+            this.render.updateSVGSkin(this.skins['svg'], image.src, [0,0]);
+            this.render.updateDrawableSkinId(this.stamp, this.skins['svg']);
+        } else {
+            this.render.updateBitmapSkin(this.skins['bitmap'], image, 1, [0,0]);
+            this.render.updateDrawableSkinId(this.stamp, this.skins['bitmap']);
+        }
+        this.render.updateDrawableSkinId(this.stamp, this.skins['rectangle']);
+        this.render.updateDrawableEffect(this.stamp, 'horizontalShear', 0);
+        this.render.updateDrawableEffect(this.stamp, 'tintWhites', 0);
+        this.render.updateDrawableEffect(this.stamp, 'tintBlacks', 0);
+        const size = new Point(width,height).mul(TextLayer.tileSize);
+        const pos = new Point(x,y)
+            .sub(this.size.clone().div(2).translate(0,-1))
+            .mul(TextLayer.tileSize);
+        switch (this.xAlign) {
+        case 'left': break;
+        case 'center': pos[0] += size[0] / 2; break;
+        case 'right': pos[0] += size[0]; break;
+        }
+        switch (this.yAlign) {
+        case 'top': pos[1] += size[1]; break;
+        case 'center': pos[1] += size[1] / 2; break;
+        case 'bottom': break;
+        }
+        this.render.updateDrawablePosition(this.stamp, pos);
+        this.render.updateDrawableScale(this.stamp, [100,100]);
         this.render.penStamp(this.pen.skin, this.stamp);
     }
     text(str, pos) {
-        let foreColor = this._stroke;
-        let italic = false;
-        let backColor = this._fill;
-        let last = 0;
-        const cursor = (pos ?? this.cursor).clone().max(0).min(this.size.clone().sub(1));
-        pos ??= new Point(0,0);
-        const tiles = [];
-        for (const match of str.matchAll(TextLayer.ansiEscapeMatch)) {
-            const args = (match.groups.args ?? '')
-                .split(';')
-                .map(arg => {
-                    if (arg[0] === '#') return arg;
-                    if (arg.length === 0) return null;
-                    if (Number(arg) === NaN) return 0;
-                    return Number(arg);
-                });
-            const text = str.slice(last, match.index);
-            for (const char of text) {
-                if (cursor[0] >= this.size[0]) {
-                    cursor[0] = pos[0];
-                    cursor[1]++;
+        pos ??= this.cursor;
+        this.cursor = pos.clone();
+        const lines = [[]];
+        let funcName = '';
+        let args = [''];
+        let totalWidth = 0;
+        /**
+         * 0: Initial state, all none special characters go into lines
+         * 1: A $ has been spotted while in state 0, all characters go into funcName
+         * 2: A ( has been spotted while in state 1, all characters go into args until a )
+         * @type {0|1|2}
+         */
+        let state = 0;
+        for (let i = 0, char; char = str[i]; i++) {
+            totalWidth = Math.max(totalWidth, lines.at(-1).length);
+            switch (state) {
+            case 0:
+                switch (char) {
+                case '$': state = 1; break;
+                case '\t':
+                    this.cursor[0] = Math.ceil(this.cursor[0] / this.tabLength) * this.tabLength;
+                    break;
+                case '\n':
+                    this.cursor[0] = pos[0];
+                    this.cursor[1]++;
+                    break;
+                default:
+                    lines.at(-1).push([char, this._stroke, this._fill, this.italic, this.textScale, this.cursor.clone()]);
+                    this.cursor[0]++;
+                    break;
                 }
-                if (char === '\n') {
-                    cursor[0] = pos[0];
-                    cursor[1]++;
-                    continue;
+                break;
+            case 1:
+                switch (char) {
+                case '(': state = 2; break;
+                case '$':
+                    if (char === '$' && funcName === '') {
+                        lines.at(-1).push([char, this._stroke, this._fill, this.italic, this.textScale, this.cursor.clone()]);
+                        this.cursor[0]++;
+                        state = 0;
+                        break;
+                    }
+                default: funcName += char; break;
                 }
-                if (char === '\t') {
-                    cursor[0] = Math.ceil(cursor[0] / this.tabLength) * this.tabLength;
-                    continue;
+                break;
+            case 2:
+                switch (char) {
+                case ')': {
+                    state = 0;
+                    funcName = funcName.trim();
+                    args = args.map(arg => isNaN(Number(arg.trim())) ? arg.trim() : Number(arg.trim()));
+                    switch (funcName) {
+                    case 'move': this.cursor.set(args[0], args[1]); break;
+                    case 'reset': 
+                        this.italic = false;
+                        this.stroke = '#FFFF';
+                        this.fill = '#0000';
+                        break;
+                    case 'fill': this.fill = args[0]; break;
+                    case 'stroke': this.stroke = args[0]; break;
+                    case 'italic': this.italic = args[0] || true; break;
+                    case 'clearLine': this.clearLine(args[0] || this.cursor[1]); break;
+                    case 'clearArea': this.clearArea(args[2] ?? this.cursor[0], args[3] ?? this.cursor[1], args[0], args[1]); break;
+                    case 'clearAll': this.clearAll(); break;
+                    case 'scale': this.textScale = args[0]; break;
+                    }
+                    funcName = '';
+                    args = [''];
+                    break;
                 }
-                tiles.push([char, foreColor, backColor, italic, cursor.clone()]);
-                cursor[0]++;
-            }
-            switch (match.groups.op) {
-            case 'move': cursor.set(args[0], args[1]); break;
-            case 'foreColor': foreColor = TextLayer.parseColor(args[0]); break;
-            case 'backColor': backColor = TextLayer.parseColor(args[0]); break;
-            case 'italic': italic = args[0] ?? true; break;
-            case 'clearLine': this.clearLine(cursor[1]); break;
-            case 'clearArea': this.clearArea(cursor[0], cursor[1], args[0], args[1]); break;
-            case 'clear': this.clearAll(); break;
-            case 'reset':
-                foreColor = this._stroke;
-                backColor = this._fill;
-                italic = false;
+                case ',': args.push(''); break;
+                default: args[args.length -1] += char; break;
+                }
                 break;
             }
-            last = match.index + match[0].length;
         }
-        const text = str.slice(last);
-        for (const char of text) {
-            if (cursor[0] >= this.size[0]) {
-                cursor[0] = pos[0];
-                cursor[1]++;
+        const tiles = [];
+        for (const line of lines) {
+            for (const tile of line) {
+                const pos = tile.pop();
+                switch (this.xAlign) {
+                case 'left': break;
+                case 'center': pos[0] += (totalWidth - line.length) / 2; break;
+                case 'right': pos[0] += totalWidth - line.length; break;
+                }
+                switch (this.yAlign) {
+                case 'top': break;
+                case 'center': pos[1] += (lines.length / 2) - 0.5; break;
+                case 'bottom': pos[1] += lines.length; break;
+                }
+                tile.push(pos);
+                tiles.push(tile);
             }
-            if (char === '\n') {
-                cursor[0] = pos[0];
-                cursor[1]++;
-                continue;
-            }
-            if (char === '\t') {
-                cursor[0] = Math.ceil(cursor[0] / this.tabLength) * this.tabLength;
-                continue;
-            }
-            tiles.push([char, foreColor, backColor, italic, cursor.clone()]);
-            cursor[0]++;
         }
-        this._stroke = foreColor;
-        this._fill = backColor;
-        this.cursor.set(cursor);
         this.putSection(tiles);
     }
+    /**
+     * 
+     * @param {[string, number, number, boolean, number, Point][]} tiles 
+     */
     putSection(tiles) {
         for (let i = tiles.length -1; i >= 0; i-- ) {
-            const pos = tiles[i][4]
+            const pos = tiles[i].at(-1)
                 .max(0)
                 .min(this.size.clone().sub(1))
                 .clone()
                 .sub(this.size.clone().div(2).sub([0,1]))
                 .mul(TextLayer.tileSize)
                 .clamp(1);
-            if (tiles[i][4][1] < 0) continue;
             this.render.penClearRect(this.pen.skin, pos[0], pos[1], TextLayer.tileSize[0], TextLayer.tileSize[0]);
             this.render.updateDrawableSkinId(this.stamp, this.skins[tiles[i][0]]);
             this.render.updateDrawableEffect(this.stamp, 'horizontalShear', tiles[i][3] ? 2 : 0);
             this.render.updateDrawableEffect(this.stamp, 'tintWhites', tiles[i][1] +1);
             this.render.updateDrawableEffect(this.stamp, 'tintBlacks', tiles[i][2] +1);
             this.render.updateDrawablePosition(this.stamp, pos);
+            this.render.updateDrawableScale(this.stamp, [tiles[i][4] * 100,tiles[i][4] * 100]);
             this.render.penStamp(this.pen.skin, this.stamp);
         }
     }
@@ -281,14 +424,21 @@ class TextLayer {
         gl.clear(gl.COLOR_BUFFER_BIT);
         const scrollPos = new Point(0, distance);
         this._frameOverFrame(scrollPos, source._framebuffer, destination._framebuffer);
+        const swap = this.scrollBufferSwap;
         // copy for display
         // copy for scroll buffer, in the necessary direction
         if (distance >= 1) {
-            this._frameOverFrame(scrollPos.add([0,-this.size[1]]), source._framebuffer, this.scrollBufferUp);
+            this._frameOverFrame(scrollPos, this.scrollBufferUp, swap);
+            this._frameOverFrame(scrollPos.add([0,-this.size[1]]), source._framebuffer, swap);
+            this.scrollBufferSwap = this.scrollBufferUp;
+            this.scrollBufferUp = swap;
             this._frameOverFrame(scrollPos.add([0,-TextLayer.scrollBufferLength]).mul(-1), this.scrollBufferDown, destination._framebuffer);
         } else {
-            this._frameOverFrame(scrollPos.add([0,this.size[1]]), source._framebuffer, this.scrollBufferUp);
-            this._frameOverFrame(scrollPos.add([0,TextLayer.scrollBufferLength]).mul(-1), this.scrollBufferUp, destination._framebuffer);
+            this._frameOverFrame(scrollPos, this.scrollBufferDown, swap);
+            this._frameOverFrame(scrollPos.add([0,this.size[1]]), source._framebuffer, swap);
+            this.scrollBufferSwap = this.scrollBufferDown;
+            this.scrollBufferDown = swap;
+            this._frameOverFrame(scrollPos.add([0,TextLayer.scrollBufferLength]), this.scrollBufferUp, destination._framebuffer);
         }
         this.pen.alt = source.id;
         this.pen.skin = destination.id;

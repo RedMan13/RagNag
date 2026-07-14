@@ -183,8 +183,8 @@ class Point extends Float32Array {
      */
     min(cap) {
         if (cap?.length !== 2) cap = [cap,cap];
-        this[0] = Math.min(this[0], cap[0]);
-        this[1] = Math.min(this[1], cap[1]);
+        this[0] = !isFinite(cap[0]) ? this[0] : Math.min(this[0], cap[0]);
+        this[1] = !isFinite(cap[1]) ? this[1] : Math.min(this[1], cap[1]);
         return this;
     }
     /**
@@ -194,8 +194,8 @@ class Point extends Float32Array {
      */
     max(cap) {
         if (cap?.length !== 2) cap = [cap,cap];
-        this[0] = Math.max(this[0], cap[0]);
-        this[1] = Math.max(this[1], cap[1]);
+        this[0] = !isFinite(cap[0]) ? this[0] : Math.max(this[0], cap[0]);
+        this[1] = !isFinite(cap[1]) ? this[1] : Math.max(this[1], cap[1]);
         return this;
     }
     /**

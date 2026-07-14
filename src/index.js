@@ -69,6 +69,8 @@ class MainGame {
     /** @type {Settings} */
     settings = null;
     stepping = false;
+    showTopBar = false;
+    topStart = 0;
 
     constructor(window, canvas) {
         this.window = window;
@@ -76,7 +78,7 @@ class MainGame {
         this._initKeys();
     }
     _initRenderer() {
-        this.render = new WebGLRenderer(this.canvas, -this.window.width / 2, this.window.width / 2, this.window.height / 2, -this.window.height / 2);
+        this.render = new WebGLRenderer(this.canvas, -this.window.width / 2, this.window.width / 2, -this.window.height / 2, this.window.height / 2);
         this.render.renderOffscreen = true;
         this.render.setBackgroundColor(0,0,0,0);
         this.render.setLayerGroupOrdering(Object.values(MainGame.layers));
@@ -396,7 +398,14 @@ class MainGame {
         });
     }
     _initKeys() {
-        keys['Open Settings']         = [[names.Escape],    true,  () => this.settings = new Settings(this.text, window), 'Opens the settings and exit menu'];
+        keys['Open Settings']         = [[names.Escape],    true,  () => {
+            if (this.settings) {
+                this.settings = null;
+                this.text.clearAll();
+                return;
+            }
+            this.settings = new Settings(this.text, window);
+        }, 'Opens the settings and exit menu'];
         keys['Camera Left']           = [[names.A],         false, () => this.camOff[0] -= 200 * this.stats.drawTime.time, 'Moves the debug/painting camera left'];
         keys['Camera Right']          = [[names.D],         false, () => this.camOff[0] += 200 * this.stats.drawTime.time, 'Moves the debug/painting camera right'];
         keys['Camera Up']             = [[names.W],         false, () => this.camOff[1] += 200 * this.stats.drawTime.time, 'Moves the debug/painting camera up'];
@@ -436,10 +445,12 @@ class MainGame {
                 this.entities.nudgeEntity(this.player, -15,0);
         }, 'Makes the player move right'];
         keys['Place Tile']            = [[names.MouseLeft], false, () => {
+            if (this.topStart > 0 && this.window.cursorPos.y < (this.topStart * TextLayer.tileSize[1])) return;
             if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return;
             this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = { type: this.cursor.tile };
         }, 'Sets the type of the currently hovered tile to the selected type'];
         keys['Clear Tile']            = [[names.MouseRight], false, () => {
+            if (this.topStart > 0 && this.window.cursorPos.y < (this.topStart * TextLayer.tileSize[1])) return;
             if (!this.tiles.map[this.cursor.pos[0]]?.[this.cursor.pos[1]]) return;
             this.tiles.map[this.cursor.pos[0]][this.cursor.pos[1]] = { type: 0 };
         }, 'Sets the type of the currently hovered tile to empty'];
@@ -498,11 +509,15 @@ class MainGame {
         this.stats.tickTime.start = Date.now();
         this.stats.tickTime.changed = true;
     }
+
     drawDebugInfo() {
         if (console.visible) return;
         const avgDraw = this.stats.drawTime.times.reduce((c,v) => c + v, 0) / this.stats.drawTime.times.length;
 
-        this.text.text(`\x1b[move 0;0 \x1b[foreColor #FFFFFF \x1b[backColor #00000000 DT: ${this.stats.drawTime.time} (${avgDraw})
+        this.text.xAlign = 'left';
+        this.text.yAlign = 'top';
+        this.text.moveTo(0,this.topStart);
+        this.text.text(`$stroke(#FFFFFF)$fill(#00000000)DT: ${this.stats.drawTime.time} (${avgDraw})
 FPS: ${Math.round(1 / this.stats.drawTime.time)} (${Math.round(1 / avgDraw)})
 Draw Count: ${this.render._drawList.length} (${this.render._allSkins.length})`);
         this.text.strokeWidth = 0;
@@ -533,7 +548,7 @@ Draw Count: ${this.render._drawList.length} (${this.render._allSkins.length})`);
 
         const avgTick = this.stats.tickTime.times.reduce((c,v) => c + v, 0) / this.stats.tickTime.times.length;
 
-        this.text.text(`\x1b[foreColor #FFFFFF \x1b[backColor #00000000 DT: ${this.stats.tickTime.time} (${avgTick})
+        this.text.text(`$stroke(#FFFFFF)$fill(#00000000)DT: ${this.stats.tickTime.time} (${avgTick})
 TPS: ${Math.round(1 / this.stats.tickTime.time)} (${Math.round(1 / avgTick)})
 Tick Count: ${this.entities.entities.length}`);
         this.text.strokeWidth = 0;
@@ -559,8 +574,8 @@ Tick Count: ${this.entities.entities.length}`);
         this.text.fill = '#00000000';
         this.text.stroke = '#000000';
         this.text.text(`
-\x1b[backColor #80ff91 Good FPS\x1b[reset \t\x1b[backColor #ff8080 Bad FPS\x1b[reset 
-\x1b[backColor #0000FF Average FPS\x1b[reset \t\x1b[backColor #00FFFF Ideal FPS\x1b[reset 
+$stroke(#000)$fill(#80ff91)Good FPS$reset()\t$stroke(#000)$fill(#ff8080)Bad FPS$reset() 
+$fill(#0000FF)Average FPS$reset()\t$stroke(#000)$fill(#00FFFF)Ideal FPS$reset()
         `);
     }
     drawFrame() {
@@ -573,17 +588,18 @@ Tick Count: ${this.entities.entities.length}`);
         this.movingPlayer = false;
         this.tiles.draw();
         this.entities.draw();
-        if (this.settings)
-            this.settings.draw();
 
         const target = this.entities.entities[this.player].pos.clone();
         this.render.setBackgroundColor(Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.384313725, 0.384313725), Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.670588235, 0.670588235), ((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.858823529, 1);
-        const distance = target.clone().scale(-1,1).sub(this.tiles.camera.pos);
+        const distance = target.clone()
+            .scale(-1,1)
+            .sub(this.tiles.camera.pos)
+            .mul(0.20);
         if (!this.movingPlayer) {
             this.tiles.camera.pos = this.camOff.clone()
                 .sub(this.tiles.screenWh.clone().div(2))
                 .add(this.tiles.camera.pos)
-                .add(distance.mul(0.20));
+                .add(distance);
         }
 
         const screenPos = this.tiles.screenToWorld(this.window.cursorPos.x, this.window.cursorPos.y);
@@ -600,13 +616,13 @@ Tick Count: ${this.entities.entities.length}`);
 
         // draw frame
         this.render.draw();
-        if (!this.settings)
-            handleKeys(this.window);
+        handleKeys(this.window);
         if (this.window.getMouseButton(0)) {
             if (this.settings)
                 this.settings.fireClicks();
             // this.debugTiles.fireClicks();
         }
+
 
         this.stats.drawTime.time = (Date.now() - this.stats.drawTime.start) / 1000;
         this.stats.drawTime.times.push(this.stats.drawTime.time);

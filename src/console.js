@@ -167,7 +167,7 @@ class InternalConsole extends console.Console {
     }
     show() {
         this.visible = true;
-        this.text.text(`\x1b[move 0;0 \x1b[foreColor #FFF \x1b[backColor #0009 \x1b[clearall 
+        this.text.text(`$move(0,0) $stroke(#FFF) $fill(#0009) $clearAll() 
 what the logs doin
 ${this.logs.map(log => log.content).join('\n')}`);
     }
