@@ -579,7 +579,7 @@ $fill(#0000FF)Average FPS$reset()\t$stroke(#000)$fill(#00FFFF)Ideal FPS$reset()
         `);
     }
     drawFrame() {
-        this.drawDebugInfo();
+        if (!this.settings) this.drawDebugInfo();
         if (this.stepping && !this.tiles.debug.enabled) {
             this.tiles.enableDebug();
             this.entities.enableDebug();
@@ -588,6 +588,7 @@ $fill(#0000FF)Average FPS$reset()\t$stroke(#000)$fill(#00FFFF)Ideal FPS$reset()
         this.movingPlayer = false;
         this.tiles.draw();
         this.entities.draw();
+        if (this.settings) this.settings.draw();
 
         const target = this.entities.entities[this.player].pos.clone();
         this.render.setBackgroundColor(Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.384313725, 0.384313725), Math.min(((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.670588235, 0.670588235), ((500 - (target[1] / this.tiles.tileWh[1])) / 500) * 0.858823529, 1);

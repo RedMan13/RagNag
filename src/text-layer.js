@@ -8,7 +8,8 @@ class TextLayer {
     static tiles = Object.fromEntries(new Array(256).fill(-1)
         .map((_,i) => [String.fromCharCode(i), i]));
     static ansiEscapeMatch = /\x1b\[(?<op>[a-z]+) (?:(?<args>(?:[0-9.]*|#[0-9a-f]{3}|#[0-9a-f]{4}|#[0-9a-f]{6}|#[0-9a-f]{8})(?:;(?:[0-9]*|#[0-9a-f]{3}|#[0-9a-f]{4}|#[0-9a-f]{6}|#[0-9a-f]{8}))*) )?/gi;
-    static tileSize = new Point(6,6);
+    static scaled = 100;
+    static tileSize = new Point(TextLayer.scaled * 6,TextLayer.scaled * 6);
     static scrollBufferLength = 2048;
     static layer = 'gui';
     static colorNumberToGL(color) {
@@ -138,13 +139,13 @@ class TextLayer {
     }
     dot(x,y) {
         this.render.penPoint(this.pen.skin, {
-            diameter: this.strokeWidth,
+            diameter: this.strokeWidth * TextLayer.scaled,
             color4f: TextLayer.colorNumberToGL(this._stroke)
         }, (x - (this.size[0] / 2)) * TextLayer.tileSize[0], (y - ((this.size[1] / 2) -1)) * TextLayer.tileSize[1]);
     }
     line(sx,sy,ex,ey) {
         this.render.penLine(this.pen.skin, {
-            diameter: this.strokeWidth,
+            diameter: this.strokeWidth * TextLayer.scaled,
             color4f: TextLayer.colorNumberToGL(this._stroke)
         }, (sx - (this.size[0] / 2)) * TextLayer.tileSize[0], (sy - ((this.size[1] / 2) -1)) * TextLayer.tileSize[1], (ex - (this.size[0] / 2)) * TextLayer.tileSize[0], (ey - (this.size[1] / 2)) * TextLayer.tileSize[1]);
     }
@@ -169,7 +170,7 @@ class TextLayer {
         }
         this.render.updateDrawablePosition(this.stamp, pos);
         this.render.updateDrawableScale(this.stamp, [100,100]);
-        this.render.updateRectangleSkin(this.skins['rectangle'], size, TextLayer.colorNumberToGL(this._fill), TextLayer.colorNumberToGL(this._stroke), this.strokeWidth, [0,0]);
+        this.render.updateRectangleSkin(this.skins['rectangle'], size, TextLayer.colorNumberToGL(this._fill), TextLayer.colorNumberToGL(this._stroke), this.strokeWidth * TextLayer.scaled, [0,0]);
         this.render.penStamp(this.pen.skin, this.stamp);
     }
     elipse(x,y, radiusX, radiusY, start = 0, end = 360) {
@@ -193,7 +194,7 @@ class TextLayer {
         }
         this.render.updateDrawablePosition(this.stamp, pos);
         this.render.updateDrawableScale(this.stamp, [100,100]);
-        this.render.updateElipseSkin(this.skins['elipse'], radi, TextLayer.colorNumberToGL(this._fill), [0,0], start, end, TextLayer.colorNumberToGL(this._stroke), this.strokeWidth, [0,0]);
+        this.render.updateElipseSkin(this.skins['elipse'], radi, TextLayer.colorNumberToGL(this._fill), [0,0], start, end, TextLayer.colorNumberToGL(this._stroke), this.strokeWidth * TextLayer.scaled, [0,0]);
         this.render.penStamp(this.pen.skin, this.stamp);
     }
     async image(image, x,y, width,height) {
@@ -387,7 +388,7 @@ class TextLayer {
             this.render.updateDrawableEffect(this.stamp, 'tintWhites', tiles[i][1] +1);
             this.render.updateDrawableEffect(this.stamp, 'tintBlacks', tiles[i][2] +1);
             this.render.updateDrawablePosition(this.stamp, pos);
-            this.render.updateDrawableScale(this.stamp, [tiles[i][4] * 100,tiles[i][4] * 100]);
+            this.render.updateDrawableScale(this.stamp, [(tiles[i][4] * TextLayer.scaled) * 100, (tiles[i][4] * TextLayer.scaled) * 100]);
             this.render.penStamp(this.pen.skin, this.stamp);
         }
     }

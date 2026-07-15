@@ -44,7 +44,7 @@ const keySwitches = [
         [1,2, 1,1, '!\n1', names['1']],
         [2,2, 1,1, '@\n2', names['2']],
         [3,2, 1,1, '#\n3', names['3']],
-        [4,2, 1,1, '$\n4', names['4']],
+        [4,2, 1,1, '$$\n4', names['4']],
         [5,2, 1,1, '%\n5', names['5']],
         [6,2, 1,1, '^\n6', names['6']],
         [7,2, 1,1, '&\n7', names['7']],
@@ -144,156 +144,195 @@ const keySwitches = [
     ],
 ];
 class Settings {
+    static keyboardLocation = new Point(0,80);
+    static backdrop = '#0006';
+
     /** @type {import('glfw-raub').Window} */
     window = null;
     /** @type {import('./text-layer.js')} */
     text = null;
     /** @type {DebuggerTiles} */
     tiles = null;
+    needsReflow = true;
+    bottom = 0;
+    /**
+     * @type {{ title: string, x: number, y: number, w: number, h: number, pressed: boolean }[]}
+     */
+    buttons = [
+        {
+            title: 'Exit Game',
+            x: 0,
+            y: 0,
+            w: 5,
+            h: 1,
+            pressed: false
+        }
+    ];
+
     constructor(text, window) {
         this.text = text;
         this.window = window;
         this.draw();
     }
     draw() {
-        this.text.clearAll();
-        this.labelsUp = true;
-        this.leftList = true;
-        this.nameRowTopLeft = 0;
-        this.nameRowTopRight = 0;
-        this.nameRowBottomLeft = 0;
-        this.nameRowBottomRight = 0;
-        this.labelsUp = true;
-        this.linePoses = [];
-        for (let i = 0; i < keySwitches.length / 2; i++) {
-            const row = keySwitches[i];
-            this.nameRowTopLeft = row[0];
-            this.nameRowTopRight = row[1];
+        if (this.needsReflow) {
+            this.text.clearAll();
+            this.needsReflow = false;
+
+            this.text.fill = Settings.backdrop;
+            this.text.strokeWidth = 0;
+            this.text.rect(0,0, this.text.size[0], this.text.size[1]);
+
+            this.labelsUp = true;
             this.leftList = true;
-            for (let j = 0; j < row[2].length / 2; j++)
-                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
-            this.leftList = false;
-            for (let j = row[2].length -1; j >= row[2].length / 2; j--)
-                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
+            this.nameRowTopLeft = 0;
+            this.nameRowTopRight = 0;
+            this.nameRowBottomLeft = 0;
+            this.nameRowBottomRight = 0;
+            this.labelsUp = true;
+            this.linePoses = [];
+            for (let i = 0; i < keySwitches.length / 2; i++) {
+                const row = keySwitches[i];
+                this.nameRowTopLeft = row[0];
+                this.nameRowTopRight = row[1];
+                this.leftList = true;
+                for (let j = 0; j < row[2].length / 2; j++)
+                    this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+                this.leftList = false;
+                for (let j = row[2].length -1; j >= row[2].length / 2; j--)
+                    this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+            }
+            // tack on the mouse
+            this.drawKey(24.5, 0, 1.5,2, 'L', names['MouseLeft'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['MouseLeft'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['MouseLeft']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.drawKey(26, 0, .5,2, 'M', names['MouseMiddle'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['MouseMiddle'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['MouseMiddle']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.drawKey(26.5, 0, 1.5,2, 'R', names['MouseRight'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['MouseRight'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['MouseRight']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.drawKey(24.5, 2, 3.5,3, '', names['MouseRight'], false);
+            this.drawKey(27.84, 2.6, .32,2.4, '', names['MouseRight'], false);
+            this.drawKey(28, 3.2, .32,1.8, '', names['MouseRight'], false);
+            this.drawKey(28.16, 3.8, .34,1.2, '', names['MouseRight'], false);
+            this.drawKey(28.34, 4.4, .34,.6, '', names['MouseRight'], false);
+            this.drawKey(28, 2, .31,.6, '4', names['Mouse4'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['Mouse4'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['Mouse4']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.drawKey(28.18, 2.6, .31,.6, '5', names['Mouse5'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['Mouse5'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['Mouse5']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.drawKey(28.36, 3.2, .31,.6, '6', names['Mouse6'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['Mouse6'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['Mouse6']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.drawKey(28.55, 3.8, .31,.6, '7', names['Mouse7'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['Mouse7'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['Mouse7']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.drawKey(28.73, 4.4, .31,.6, '8', names['Mouse8'],
+                Object.entries(keys)
+                    .some(item => item[1][0].includes(names['Mouse8'])),
+                Object.entries(keys)
+                    .filter(item => item[1][0].includes(names['Mouse8']))
+                    .map(item => item[0])
+                    .join(', ')
+            );
+            this.labelsUp = false;
+            for (let i = keySwitches.length -1; i >= keySwitches.length / 2; i--) {
+                const row = keySwitches[i];
+                this.nameRowBottomLeft = row[0];
+                this.nameRowBottomRight = row[1];
+                this.leftList = true;
+                for (let j = 0; j < row[2].length / 2; j++)
+                    this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+                this.leftList = false;
+                for (let j = row[2].length -1; j >= row[2].length / 2; j--)
+                    this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
+                        Object.entries(keys)
+                            .some(item => item[1][0].includes(row[2][j][5])),
+                        Object.entries(keys)
+                            .filter(item => item[1][0].includes(row[2][j][5]))
+                            .map(item => item[0])
+                            .join(', ')
+                    );
+            }
         }
-        // tack on the mouse
-        this.drawKey(24.5, 0, 1.5,2, 'L', names['MouseLeft'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['MouseLeft'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['MouseLeft']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.drawKey(26, 0, .5,2, 'M', names['MouseMiddle'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['MouseMiddle'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['MouseMiddle']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.drawKey(26.5, 0, 1.5,2, 'R', names['MouseRight'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['MouseRight'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['MouseRight']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.drawKey(24.5, 2, 3.5,3, '', names['MouseRight'], false);
-        this.drawKey(27.84, 2.6, .32,2.4, '', names['MouseRight'], false);
-        this.drawKey(28, 3.2, .32,1.8, '', names['MouseRight'], false);
-        this.drawKey(28.16, 3.8, .34,1.2, '', names['MouseRight'], false);
-        this.drawKey(28.34, 4.4, .34,.6, '', names['MouseRight'], false);
-        this.drawKey(28, 2, .31,.6, '4', names['Mouse4'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['Mouse4'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['Mouse4']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.drawKey(28.18, 2.6, .31,.6, '5', names['Mouse5'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['Mouse5'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['Mouse5']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.drawKey(28.36, 3.2, .31,.6, '6', names['Mouse6'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['Mouse6'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['Mouse6']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.drawKey(28.55, 3.8, .31,.6, '7', names['Mouse7'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['Mouse7'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['Mouse7']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.drawKey(28.73, 4.4, .31,.6, '8', names['Mouse8'],
-            Object.entries(keys)
-                .some(item => item[1][0].includes(names['Mouse8'])),
-            Object.entries(keys)
-                .filter(item => item[1][0].includes(names['Mouse8']))
-                .map(item => item[0])
-                .join(', ')
-        );
-        this.labelsUp = false;
-        for (let i = keySwitches.length -1; i >= keySwitches.length / 2; i--) {
-            const row = keySwitches[i];
-            this.nameRowBottomLeft = row[0];
-            this.nameRowBottomRight = row[1];
-            this.leftList = true;
-            for (let j = 0; j < row[2].length / 2; j++)
-                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
-            this.leftList = false;
-            for (let j = row[2].length -1; j >= row[2].length / 2; j--)
-                this.drawKey(row[2][j][0], row[2][j][1], row[2][j][2], row[2][j][3], row[2][j][4], row[2][j][5], 
-                    Object.entries(keys)
-                        .some(item => item[1][0].includes(row[2][j][5])),
-                    Object.entries(keys)
-                        .filter(item => item[1][0].includes(row[2][j][5]))
-                        .map(item => item[0])
-                        .join(', ')
-                );
-        }
+        this.text.clearArea(0, this.bottom, this.text.size[0], this.text.size[1]);
+        this.text.fill = Settings.backdrop;
+        this.text.strokeWidth = 0;
+        this.text.rect(0, this.bottom, this.text.size[0], this.text.size[1]);
+
+        this.buttons.forEach(button => {
+            const x = button.x + (((this.text.size[0] / (38 / TextLayer.tileSize[1])) / 2) - (button.w / 2));
+            const y = button.y + (this.bottom / (38 / TextLayer.tileSize[1])) + 0.5;
+            this.drawKey(x,y, button.w, button.h, button.title, button.pressed);
+        });
     }
     drawKey(x,y, w,h, label, code, filled, name = 'no name') {
         x *= 38;
         y *= 38;
+        x += Settings.keyboardLocation[0];
+        y += Settings.keyboardLocation[1];
+        x -= 532;
         x /= TextLayer.tileSize[0];
         y /= TextLayer.tileSize[1];
-        x += (this.text.size[0] / 2) - 88.66;
-        y += (this.text.size[1] / 2) - 19;
+        x += this.text.size[0] / 2;
         w *= 38;
         h *= 38;
         w -= 6;
@@ -307,11 +346,11 @@ class Settings {
         this.text.rect(x,y, w,h);
         this.text.stroke = '#EEEF';
         this.text.text(label, textPos);
-        this.text.fill = '#0000';
+        this.text.fill = Settings.backdrop;
         this.text.strokeWidth = 1;
         this.text.stroke = '#EEEA';
         if (filled) {
-            const xPos = Math.floor((x + (w / 2)) * TextLayer.tileSize[0]) / TextLayer.tileSize[0];
+            const xPos = (Math.floor((x + (w / 2)) * TextLayer.tileSize[0]) / TextLayer.tileSize[0]) + Settings.keyboardLocation[0];
             const nameWidth = name.split('\n').reduce((c,v) => Math.max(c, v.length), 0);
             const lines = name.split('\n').length;
             if (this.labelsUp) {
@@ -329,8 +368,10 @@ class Settings {
                             yPos -= lines;
                     }
                 }
+                // yPos += (this.text.size[1] / 2) - 19;
                 this.linePoses.push([xPos + (2 / TextLayer.tileSize[0]),yPos,nameWidth,lines]);
-                yPos += (this.text.size[1] / 2) - 19;
+                yPos += Settings.keyboardLocation[1] / TextLayer.tileSize[1];
+                this.bottom = Math.max(this.bottom, yPos +1);
                 this.text.line(xPos, y, xPos, yPos);
                 this.text.stroke = '#EEEF';
                 this.text.text(name, new Point(xPos + (2 / TextLayer.tileSize[0]), yPos));
@@ -350,7 +391,9 @@ class Settings {
                     }
                 }
                 this.linePoses.push([xPos + (2 / TextLayer.tileSize[0]),yPos,nameWidth,lines]);
-                yPos += (this.text.size[1] / 2) + 25.33;
+                yPos += 266 / TextLayer.tileSize[1];
+                yPos += Settings.keyboardLocation[1] / TextLayer.tileSize[1];
+                this.bottom = Math.max(this.bottom, yPos +1);
                 this.text.line(xPos, y + h, xPos, yPos);
                 this.text.stroke = '#EEEF';
                 this.text.text(name, new Point(xPos + (2 / TextLayer.tileSize[0]), yPos));
